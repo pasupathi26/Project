@@ -8626,12 +8626,17 @@ namespace RMSServices
                                 {
                                     CommonLog("First Table New Insert completed..Ratesheet ID=" + record.RateSheetId + " ,Table Name=" + TableName + "  and Count is=" + NewResponse.Count());
 
+                                    record.JobStatus = "Completed";
+                                    record.HitTry = record.HitTry + 1;
+                                    record.Currency = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                                    record.Status = "First Table Completed";
+                                    rms.SaveChanges();
+                                   
 
+                                    //  string Ratesheetidvaluenew = Ratesheetidvalue == "1" ? "2" : "1";
 
-                                  //  string Ratesheetidvaluenew = Ratesheetidvalue == "1" ? "2" : "1";
-
-                                   // var check = MongoDB.GetCollection<Teleboss_Ratesheet_Status>("Teleboss_Ratesheet_Status").Update(Query<Teleboss_Ratesheet_Status>.EQ(p => p.RatesheetID, record.RateSheetId.ToString()),
-                                                          //        Update<Teleboss_Ratesheet_Status>.Set(c => c.Active, Ratesheetidvaluenew));
+                                    // var check = MongoDB.GetCollection<Teleboss_Ratesheet_Status>("Teleboss_Ratesheet_Status").Update(Query<Teleboss_Ratesheet_Status>.EQ(p => p.RatesheetID, record.RateSheetId.ToString()),
+                                    //        Update<Teleboss_Ratesheet_Status>.Set(c => c.Active, Ratesheetidvaluenew));
 
                                     // 2nd table insertion
 
@@ -8673,6 +8678,7 @@ namespace RMSServices
                                         CommonLog("second Table New Method Insert completed..Ratesheet ID=" + record.RateSheetId + " ,Table Name=" + TableName1 + "  and Count is=" + NewResponse.Count());
                                         record.JobStatus = "Completed";
                                         record.HitTry = record.HitTry + 1;
+                                        record.Status = "Second Table Completed";
                                         record.Currency = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                                         rms.SaveChanges();
                                         responsemessage.status = "true";
@@ -8906,6 +8912,12 @@ namespace RMSServices
                                     // 2nd table insertion
                                     // string TableName1 = Ratesheetidvaluenew == "1" ? "Teleboss_Ratesheet_Rate_2" : "Teleboss_Ratesheet_Rate_1";
 
+                                    record.JobStatus = "Completed";
+                                    record.HitTry = record.HitTry + 1;
+                                    record.Currency = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                                    record.Status = "First Table Completed";
+                                    rms.SaveChanges();
+
                                     string TableName1 = "Teleboss_Ratesheet_Rate_2";
 
                                     var Collec2 = MongoDB.GetCollection<BsonElement>(TableName1).InsertBatch(NewResponse.Select(c => new BsonDocument{
@@ -8986,6 +8998,7 @@ namespace RMSServices
 
                                         record.JobStatus = "Completed";
                                         record.HitTry = record.HitTry + 1;
+                                        record.Status = "Second Table Completed";
                                         record.Currency = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                                         rms.SaveChanges();
 
@@ -9233,6 +9246,13 @@ namespace RMSServices
 
                                     // 2nd table insertion
                                     // string TableName1 = Ratesheetidvaluenew == "1" ? "Teleboss_Ratesheet_Rate_2" : "Teleboss_Ratesheet_Rate_1";
+
+                                    record.JobStatus = "Completed";
+                                    record.HitTry = record.HitTry + 1;
+                                    record.Currency = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                                    record.Status = "First Table Completed";
+                                    rms.SaveChanges();
+
                                     string TableName1 = "Teleboss_Ratesheet_Rate_2";
 
                                     #endregion
@@ -9325,6 +9345,7 @@ namespace RMSServices
 
                                         record.JobStatus = "Completed";
                                         record.HitTry = record.HitTry + 1;
+                                        record.Status = "Second Table Completed";
                                         record.Currency = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                                         rms.SaveChanges();
 
