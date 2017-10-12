@@ -1,0 +1,3293 @@
+using Newtonsoft.Json;
+using RestSharp;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Configuration;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Security;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Web;
+using System.Web.Hosting;
+
+namespace RMSServices
+{
+
+    public class NewNexege
+    {
+        static string CsvFileName = "";
+        public static string NexgesessionId;
+        static CookieContainer cookies;
+        static HttpWebRequest wr;
+        public static Response UploadRatesheetEffectiveOn(List<ngt_rateslist1> RateSheet, string User, string ServerRatesheetName, string ServerRatesheetID, string rateEffectiveOn, string ip, string sessionID, string password, bool CompanyType)
+        {
+            string[] ipadd = ip.Split(':');
+            Response result = new Response();
+
+            string fileName = ConversiontoNewNexegeNew(RateSheet);
+
+            FileStream fsnewnexge = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+            byte[] DatanewNexge = new byte[fsnewnexge.Length];
+            fsnewnexge.Read(DatanewNexge, 0, DatanewNexge.Length);
+            fsnewnexge.Close();
+
+            UpdateError("NewNexge Ratesheet UploadRatesheetEffectiveOn Ratesheet CSV", rateEffectiveOn, "RatesheetLogs.txt", " File Name:- " + fileName + ", Company Type:-" + CompanyType, false);
+
+            try
+            {
+                if (CompanyType == false)
+                {
+                    string SessionId = AuthicateoldLogin(ip, User, password);
+
+
+                    RestClient restClient1 = new RestClient();
+                    restClient1.CookieContainer = new CookieContainer();
+                    // Url4
+                    string URI4 = "http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=Origination";
+                    RestRequest wc = new RestRequest(URI4, Method.POST);
+                    wc.AddHeader("Accept", "text / html, application / xhtml + xml, application / xml; q = 0.9,*/*;q=0.8");
+                    wc.AddHeader("Accept-Encoding", "gzip, deflate");
+                    wc.AddHeader("Accept-Language", "en-US,en;q=0.5");
+                    wc.AddHeader("Cookie", "JSESSIONID=" + SessionId);
+                    wc.AddHeader("Host", ip);
+                    wc.AddHeader("Referer", "http://" + ip + "/admin/AdminCenter.jsp?userId=admin");
+                    wc.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0");
+                    wc.AddHeader("Content-Type", "application/x-www-form-urlencoded");
+                    wc.AddCookie("JSESSIONID", SessionId);
+                    wc.AddParameter("fromBpCode", ServerRatesheetID);
+                    wc.AddParameter("fromBpName", ServerRatesheetName);
+                    wc.AddParameter("owner", User);
+                    wc.AddParameter("rateEffectiveDate", rateEffectiveOn);
+                    wc.AddParameter("calendarType", "day");
+                    wc.AddParameter("calendarValue", "1-7");
+                    wc.AddParameter("isRateSheetAvail", "true");
+
+                    if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetcallcenterupdatetermination"].ToString())
+                    {
+
+                        //  string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitelUpdate(RateSheet);
+                        string newNexgeSampleFilePathcallcentre = ConversiontoNewNexegecallcentreNewOriginationUpdate(RateSheet);
+
+                        FileStream fsnewnexgecallcentre = new FileStream(newNexgeSampleFilePathcallcentre, FileMode.Open, FileAccess.Read);
+                        byte[] DatanewNexgecallcenter = new byte[fsnewnexgecallcentre.Length];
+                        fsnewnexgecallcentre.Read(DatanewNexgecallcenter, 0, DatanewNexgecallcenter.Length);
+                        fsnewnexgecallcentre.Close();
+
+                        wc.AddFile("fileName", DatanewNexgecallcenter, ServerRatesheetName);
+                    }
+                    else if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetItel"].ToString() || ip == ConfigurationManager.AppSettings["Telservnet2"].ToString())
+                    {
+                        string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitelUpdate(RateSheet);
+
+                        FileStream fsnewnexgeItel = new FileStream(newNexgeSampleFilePathItel, FileMode.Open, FileAccess.Read);
+                        byte[] DatanewNexgeItel = new byte[fsnewnexgeItel.Length];
+                        fsnewnexgeItel.Read(DatanewNexgeItel, 0, DatanewNexgeItel.Length);
+                        fsnewnexgeItel.Close();
+
+                        wc.AddFile("fileName", DatanewNexgeItel, ServerRatesheetName);
+                    }
+                    else
+                        wc.AddFile("fileName", DatanewNexge, ServerRatesheetName);
+
+                    wc.AddParameter("updateType", "append");
+                    wc.AddParameter("sheetWith", "None");
+                    wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
+                    restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
+
+                    ServicePointManager.ServerCertificateValidationCallback =
+                    delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+                    { return true; };
+
+                    IRestResponse response1 = restClient1.Execute(wc);
+                    UpdateError("NewNexge Ratesheet Update Response", " Response:- " + response1.Content, "RatesheetLogs.txt", fileName, false);
+                    if (response1.Content.Contains("Rate Effective Billing Plan Added Successfully"))
+                    {
+                        result.status = "success";
+                        result.Message = response1.Content;
+
+                    }
+                    else
+                    {
+                        result.status = "failure";
+                        result.Message = response1.Content;
+                    }
+
+                }
+                else
+                {
+
+                    string fileNameterm = ConversiontoNewNexegeNewTerminationUpdate(RateSheet);
+
+                    FileStream fsnewnexgeterm = new FileStream(fileNameterm, FileMode.Open, FileAccess.Read);
+                    byte[] DatanewNexgeterm = new byte[fsnewnexgeterm.Length];
+                    fsnewnexgeterm.Read(DatanewNexgeterm, 0, DatanewNexgeterm.Length);
+                    fsnewnexgeterm.Close();
+
+                    string SessionId = AuthicateoldLogin(ip, User, password);
+                    RestClient restClient1 = new RestClient();
+                    restClient1.CookieContainer = new CookieContainer();
+                    // Url4
+                    string URI4 = "http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=Termination";
+                    RestRequest wc = new RestRequest(URI4, Method.POST);
+                    wc.AddHeader("Accept", "text / html, application / xhtml + xml, application / xml; q = 0.9,*/*;q=0.8");
+                    wc.AddHeader("Accept-Encoding", "gzip, deflate");
+                    wc.AddHeader("Accept-Language", "en-US,en;q=0.5");
+                    wc.AddHeader("Cookie", "JSESSIONID=" + SessionId);
+                    wc.AddHeader("Host", ip);
+                    wc.AddHeader("Referer", "http://" + ip + "/admin/AdminCenter.jsp?userId=admin");
+                    wc.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0");
+                    wc.AddHeader("Content-Type", "application/x-www-form-urlencoded");
+                    wc.AddCookie("JSESSIONID", SessionId);
+                    wc.AddParameter("fromBpCode", ServerRatesheetID);
+                    wc.AddParameter("fromBpName", ServerRatesheetName);
+                    wc.AddParameter("owner", User);
+                    wc.AddParameter("rateEffectiveDate", rateEffectiveOn);
+                    wc.AddParameter("calendarType", "day");
+                    wc.AddParameter("calendarValue", "1-7");
+                    wc.AddParameter("isRateSheetAvail", "true");
+
+                    if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetcallcenterupdatetermination"].ToString() || ip == ConfigurationManager.AppSettings["Telservnet2"].ToString())
+                    {
+
+                        string newNexgeSampleFilePathcallcentre = ConversiontoNewNexegecallcentreNewTerminationUpdate(RateSheet);
+
+                        FileStream fsnewnexgecallcentre = new FileStream(newNexgeSampleFilePathcallcentre, FileMode.Open, FileAccess.Read);
+                        byte[] DatanewNexgecallcenter = new byte[fsnewnexgecallcentre.Length];
+                        fsnewnexgecallcentre.Read(DatanewNexgecallcenter, 0, DatanewNexgecallcenter.Length);
+                        fsnewnexgecallcentre.Close();
+
+                        UpdateError("NewNexge Ratesheet Update Telservnet2 & NewNexgeIpRatesheetcallcenterupdatetermination", " ", "RatesheetLogs.txt", newNexgeSampleFilePathcallcentre, false);
+
+                        wc.AddFile("fileName", DatanewNexgecallcenter, ServerRatesheetName);
+                    }
+                    else if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetItel"].ToString())
+                    {
+
+                        //  string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitelUpdate(RateSheet);
+                        string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitelTermination(RateSheet);
+
+                        FileStream fsnewnexgeItel = new FileStream(newNexgeSampleFilePathItel, FileMode.Open, FileAccess.Read);
+                        byte[] DatanewNexgeItel = new byte[fsnewnexgeItel.Length];
+                        fsnewnexgeItel.Read(DatanewNexgeItel, 0, DatanewNexgeItel.Length);
+                        fsnewnexgeItel.Close();
+                        UpdateError("NewNexge Ratesheet Update NewNexgeIpRatesheetItel", " ", "RatesheetLogs.txt", newNexgeSampleFilePathItel, false);
+
+                        wc.AddFile("fileName", DatanewNexgeItel, ServerRatesheetName);
+
+                    }
+                    else
+                        wc.AddFile("fileName", DatanewNexgeterm, ServerRatesheetName);
+
+
+                    wc.AddParameter("updateType", "append");
+                    wc.AddParameter("sheetWith", "None");
+                    wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
+                    restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
+
+                    ServicePointManager.ServerCertificateValidationCallback =
+                    delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+                    { return true; };
+
+                    IRestResponse response1 = restClient1.Execute(wc);
+                    UpdateError("NewNexge Ratesheet Update Response", " Response:- " + response1.Content, "RatesheetLogs.txt", fileName, false);
+                    if (response1.Content.Contains("Rate Effective Billing Plan Added Successfully"))
+                    {
+                        result.status = "success";
+                        result.Message = response1.Content;
+
+                    }
+                    else
+                    {
+                        result.status = "failure";
+                        result.Message = response1.Content;
+                    }
+
+                }
+
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                result.status = "failure";
+                result.Message = ex.Message;
+                return result;
+            }
+
+        }
+
+        public static Response UploadRatesheetEffectiveOnOvverride(List<ngt_rateslist1> RateSheet, string User, string ServerRatesheetName, string ServerRatesheetID, string rateEffectiveOn, string ip, string sessionID, string password, bool CompanyType)
+        {
+
+
+            if (CompanyType == false)
+            {
+                string[] ipadd = ip.Split(':');
+                Response result = new Response();
+                string fileName = ConversiontoNewNexegeNew(RateSheet);
+
+                UpdateError("NewNexge Ratesheet Update After Convert Ratesheet CSV", rateEffectiveOn, "RatesheetLogs.txt", fileName, false);
+
+                FileStream fsnewnexge = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+                byte[] DatanewNexge = new byte[fsnewnexge.Length];
+                fsnewnexge.Read(DatanewNexge, 0, DatanewNexge.Length);
+                fsnewnexge.Close();
+
+
+                string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitelUpdate(RateSheet);
+
+                FileStream fsnewnexgeItel = new FileStream(newNexgeSampleFilePathItel, FileMode.Open, FileAccess.Read);
+                byte[] DatanewNexgeItel = new byte[fsnewnexgeItel.Length];
+                fsnewnexgeItel.Read(DatanewNexgeItel, 0, DatanewNexgeItel.Length);
+                fsnewnexgeItel.Close();
+
+                try
+                {
+                    //NameValueCollection nvc = new NameValueCollection();
+                    //nvc.Add("action_uri", "ratePlanManagement");
+                    //nvc.Add("fromBpName", ServerRatesheetName);
+                    //nvc.Add("fromBpCode", ServerRatesheetID);
+                    //nvc.Add("owner", User);
+                    //nvc.Add("orgPlan", ServerRatesheetID);
+                    //nvc.Add("rateEffectiveDate", rateEffectiveOn);
+                    //nvc.Add("calendarType", "day");
+                    //nvc.Add("calendarValue", "1-7");
+                    //nvc.Add("method", "uploadRateSheet");
+                    //nvc.Add("isRateSheetAvail", "true");
+                    //nvc.Add("copyWith", "None");
+                    //nvc.Add("sheetWith", "None");
+                    //nvc.Add("updateType", "append");
+
+                    //string companytype = "Origination";
+                    //using (rmsEntities rms = new rmsEntities())
+                    //{
+                    //    var jobqueue1 = rms.jobqueues.Where(j => j.RequestType == "Mapping" && j.ServerRatesheetNmae == ServerRatesheetName).FirstOrDefault();
+
+                    //    if (jobqueue1.CompanyType == 2)
+                    //        companytype = "Origination";
+                    //    else
+                    //        companytype = "Termination";
+
+                    //}
+                    //UpdateError("NewNexge Update ratesheet before calling ", companytype, "RatesheetLogs.txt", "", false);
+
+                    //string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=" + companytype, fileName, "ratesheet", "text/csv", nvc, sessionID);
+
+                    //string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=" + companytype, fileName, "filename", "application/octet-stream", nvc, sessionID);
+
+                    //UpdateError("NewNexge Ratesheet Update Response", Response.ToString(), "RatesheetLogs.txt", "", false);
+                    //var c = new JsonSerializer();
+                    //var a = new RateSheetClass.RatePlanResponse();
+                    //dynamic jsonObject = c.Deserialize(new StringReader(Response), a.GetType());
+                    //result.status = jsonObject.status;
+                    //result.Message = jsonObject.message;
+
+
+                    string SessionId = AuthicateoldLogin(ip, User, password);
+                    RestClient restClient1 = new RestClient();
+                    restClient1.CookieContainer = new CookieContainer();
+                    // Url4
+                    string URI4 = "http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=Origination";
+
+                    RestRequest wc = new RestRequest(URI4, Method.POST);
+                    wc.AddHeader("Accept", "text / html, application / xhtml + xml, application / xml; q = 0.9,*/*;q=0.8");
+                    wc.AddHeader("Accept-Encoding", "gzip, deflate");
+                    wc.AddHeader("Accept-Language", "en-US,en;q=0.5");
+                    wc.AddHeader("Cookie", "JSESSIONID=" + SessionId);
+                    wc.AddHeader("Host", ip);
+                    wc.AddHeader("Referer", "http://" + ip + "/admin/AdminCenter.jsp?userId=admin");
+                    wc.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0");
+                    wc.AddHeader("Content-Type", "application/x-www-form-urlencoded");
+                    wc.AddCookie("JSESSIONID", SessionId);
+                    wc.AddParameter("fromBpCode", ServerRatesheetID);
+                    wc.AddParameter("fromBpName", ServerRatesheetName);
+                    wc.AddParameter("orgPlan", ServerRatesheetID);
+                    wc.AddParameter("owner", User);
+                    wc.AddParameter("rateEffectiveDate", rateEffectiveOn);
+                    wc.AddParameter("calendarType", "day");
+                    wc.AddParameter("calendarValue", "1-7");
+                    wc.AddParameter("isRateSheetAvail", "true");
+                    wc.AddParameter("method", "uploadRateSheet");
+
+                    // wc.AddFile("fileName", DatanewNexge, ServerRatesheetName);
+
+                    if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetItel"].ToString())
+                    {
+                        wc.AddFile("fileName", DatanewNexgeItel, ServerRatesheetName);
+                        wc.AddParameter("action_uri", "ratePlanManagement");
+                        wc.AddParameter("rowNumber", "0");
+                    }
+                    else if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetcallcenterupdatetermination"].ToString() || ip == ConfigurationManager.AppSettings["Telservnet2"].ToString())
+                    {
+
+                        //  string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitelUpdate(RateSheet);
+                        string newNexgeSampleFilePathcallcentre = ConversiontoNewNexegecallcentreNewOriginationUpdate(RateSheet);
+
+                        FileStream fsnewnexgecallcentre = new FileStream(newNexgeSampleFilePathcallcentre, FileMode.Open, FileAccess.Read);
+                        byte[] DatanewNexgecallcenter = new byte[fsnewnexgecallcentre.Length];
+                        fsnewnexgecallcentre.Read(DatanewNexgecallcenter, 0, DatanewNexgecallcenter.Length);
+                        fsnewnexgecallcentre.Close();
+
+                        if (ip == ConfigurationManager.AppSettings["Telservnet2"].ToString())
+                        {
+                            wc.AddParameter("action_uri", "ratePlanManagement");
+                            wc.AddParameter("rowNumber", "0");
+                        }
+
+
+                        wc.AddFile("fileName", DatanewNexgecallcenter, ServerRatesheetName);
+                    }
+                    else
+                        wc.AddFile("fileName", DatanewNexge, ServerRatesheetName);
+
+                    wc.AddParameter("updateType", "override");
+                    wc.AddParameter("sheetWith", "None");
+                    wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
+                    restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
+
+                    ServicePointManager.ServerCertificateValidationCallback =
+                    delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+                    { return true; };
+
+                    IRestResponse response1 = restClient1.Execute(wc);
+                    UpdateError("NewNexge Ratesheet Update Response", response1.Content, "RatesheetLogs.txt", fileName, false);
+                    if (response1.Content.Contains("Rate Effective Billing Plan Added Successfully"))
+                    {
+                        result.status = "success";
+                        result.Message = response1.Content;
+
+                    }
+                    else
+                    {
+                        result.status = "failure";
+                        result.Message = response1.Content;
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    result.status = "failure";
+                    result.Message = ex.Message;
+                    return result;
+                }
+                return result;
+
+            }
+            else
+            {
+                string[] ipadd = ip.Split(':');
+                Response result = new Response();
+                string fileName = ConversiontoNewNexegeNewTerminationUpdate(RateSheet);
+
+                UpdateError("NewNexge Ratesheet Update After Convert Ratesheet CSV", rateEffectiveOn, "RatesheetLogs.txt", fileName, false);
+
+                FileStream fsnewnexge = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+                byte[] DatanewNexge = new byte[fsnewnexge.Length];
+                fsnewnexge.Read(DatanewNexge, 0, DatanewNexge.Length);
+                fsnewnexge.Close();
+
+
+                try
+                {
+                    //NameValueCollection nvc = new NameValueCollection();
+                    //nvc.Add("action_uri", "ratePlanManagement");
+                    //nvc.Add("fromBpName", ServerRatesheetName);
+                    //nvc.Add("fromBpCode", ServerRatesheetID);
+                    //nvc.Add("owner", User);
+                    //nvc.Add("orgPlan", ServerRatesheetID);
+                    //nvc.Add("rateEffectiveDate", rateEffectiveOn);
+                    //nvc.Add("calendarType", "day");
+                    //nvc.Add("calendarValue", "1-7");
+                    //nvc.Add("method", "uploadRateSheet");
+                    //nvc.Add("isRateSheetAvail", "true");
+                    //nvc.Add("copyWith", "None");
+                    //nvc.Add("sheetWith", "None");
+                    //nvc.Add("updateType", "append");
+
+                    //string companytype = "Origination";
+                    //using (rmsEntities rms = new rmsEntities())
+                    //{
+                    //    var jobqueue1 = rms.jobqueues.Where(j => j.RequestType == "Mapping" && j.ServerRatesheetNmae == ServerRatesheetName).FirstOrDefault();
+
+                    //    if (jobqueue1.CompanyType == 2)
+                    //        companytype = "Origination";
+                    //    else
+                    //        companytype = "Termination";
+
+                    //}
+                    //UpdateError("NewNexge Update ratesheet before calling ", companytype, "RatesheetLogs.txt", "", false);
+
+                    //string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=" + companytype, fileName, "ratesheet", "text/csv", nvc, sessionID);
+
+                    //string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=" + companytype, fileName, "filename", "application/octet-stream", nvc, sessionID);
+
+                    //UpdateError("NewNexge Ratesheet Update Response", Response.ToString(), "RatesheetLogs.txt", "", false);
+                    //var c = new JsonSerializer();
+                    //var a = new RateSheetClass.RatePlanResponse();
+                    //dynamic jsonObject = c.Deserialize(new StringReader(Response), a.GetType());
+                    //result.status = jsonObject.status;
+                    //result.Message = jsonObject.message;
+
+
+                    string SessionId = AuthicateoldLogin(ip, User, password);
+                    RestClient restClient1 = new RestClient();
+                    restClient1.CookieContainer = new CookieContainer();
+                    // Url4
+                    string URI4 = "http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=Termination";
+                    RestRequest wc = new RestRequest(URI4, Method.POST);
+                    wc.AddHeader("Accept", "text / html, application / xhtml + xml, application / xml; q = 0.9,*/*;q=0.8");
+                    wc.AddHeader("Accept-Encoding", "gzip, deflate");
+                    wc.AddHeader("Accept-Language", "en-US,en;q=0.5");
+                    wc.AddHeader("Cookie", "JSESSIONID=" + SessionId);
+                    wc.AddHeader("Host", ip);
+                    wc.AddHeader("Referer", "http://" + ip + "/admin/AdminCenter.jsp?userId=admin");
+                    wc.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0");
+                    wc.AddHeader("Content-Type", "application/x-www-form-urlencoded");
+                    wc.AddCookie("JSESSIONID", SessionId);
+                    wc.AddParameter("action_uri", "ratePlanManagement");
+                    wc.AddParameter("fromBpCode", ServerRatesheetID);
+                    wc.AddParameter("fromBpName", ServerRatesheetName);
+                    wc.AddParameter("orgPlan", ServerRatesheetID);
+                    wc.AddParameter("owner", User);
+                    wc.AddParameter("rateEffectiveDate", rateEffectiveOn);
+                    wc.AddParameter("calendarType", "day");
+                    wc.AddParameter("calendarValue", "1-7");
+                    wc.AddParameter("isRateSheetAvail", "true");
+                    wc.AddParameter("method", "uploadRateSheet");
+                    if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetItel"].ToString())
+                    {
+
+                        //  string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitelUpdate(RateSheet);
+                        string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitelTermination(RateSheet);
+
+                        FileStream fsnewnexgeItel = new FileStream(newNexgeSampleFilePathItel, FileMode.Open, FileAccess.Read);
+                        byte[] DatanewNexgeItel = new byte[fsnewnexgeItel.Length];
+                        fsnewnexgeItel.Read(DatanewNexgeItel, 0, DatanewNexgeItel.Length);
+                        fsnewnexgeItel.Close();
+
+
+                        wc.AddFile("fileName", DatanewNexgeItel, ServerRatesheetName);
+                        // wc.AddParameter("action_uri", "ratePlanManagement");
+                        wc.AddParameter("rowNumber", "0");
+                    }
+                    else if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetcallcenterupdatetermination"].ToString() || ip == ConfigurationManager.AppSettings["Telservnet2"].ToString())
+                    {
+
+                        //  string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitelUpdate(RateSheet);
+                        string newNexgeSampleFilePathcallcentre = ConversiontoNewNexegecallcentreNewTerminationUpdate(RateSheet);
+
+                        FileStream fsnewnexgecallcentre = new FileStream(newNexgeSampleFilePathcallcentre, FileMode.Open, FileAccess.Read);
+                        byte[] DatanewNexgecallcenter = new byte[fsnewnexgecallcentre.Length];
+                        fsnewnexgecallcentre.Read(DatanewNexgecallcenter, 0, DatanewNexgecallcenter.Length);
+                        fsnewnexgecallcentre.Close();
+
+                        if (ip == ConfigurationManager.AppSettings["Telservnet2"].ToString())
+                            wc.AddParameter("action_uri", "ratePlanManagement");
+
+                        wc.AddFile("fileName", DatanewNexgecallcenter, ServerRatesheetName);
+                        // wc.AddParameter("action_uri", "ratePlanManagement");
+                        wc.AddParameter("rowNumber", "0");
+                    }
+                    else
+                        wc.AddFile("fileName", DatanewNexge, ServerRatesheetName);
+
+
+                    wc.AddParameter("updateType", "override");
+                    wc.AddParameter("sheetWith", "None");
+                    wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
+                    restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
+
+                    ServicePointManager.ServerCertificateValidationCallback =
+                    delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+                    { return true; };
+
+                    IRestResponse response1 = restClient1.Execute(wc);
+                    UpdateError("NewNexge Ratesheet Update Response", response1.Content, "RatesheetLogs.txt", fileName, false);
+                    if (response1.Content.Contains("Rate Effective Billing Plan Added Successfully"))
+                    {
+                        result.status = "success";
+                        result.Message = response1.Content;
+
+                    }
+                    else
+                    {
+                        result.status = "failure";
+                        result.Message = response1.Content;
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    result.status = "failure";
+                    result.Message = ex.Message;
+                    return result;
+                }
+                return result;
+
+            }
+        }
+
+        public static Response ReplaceRatesheetEffectiveOn(List<ngt_rateslist1> RateSheet, string User, string ServerRatesheetName, string ServerRatesheetID, string rateEffectiveOn, string ip, string sessionID, string password)
+        {
+            string[] ipadd = ip.Split(':');
+            Response result = new Response();
+            string fileName = ConversiontoNewNexegeNew(RateSheet);
+            UpdateError("NewNexge Ratesheet Update EffectiveroN After Convert Ratesheet CSV", "", "RatesheetLogs.txt", fileName, false);
+            FileStream fsnewnexge = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+            byte[] DatanewNexge = new byte[fsnewnexge.Length];
+            fsnewnexge.Read(DatanewNexge, 0, DatanewNexge.Length);
+            fsnewnexge.Close();
+
+
+            try
+            {
+                //NameValueCollection nvc = new NameValueCollection();
+                //nvc.Add("action_uri", "ratePlanManagement");
+                //nvc.Add("fromBpName", ServerRatesheetName);
+                //nvc.Add("fromBpCode", ServerRatesheetID);
+                //nvc.Add("owner", User);
+                //nvc.Add("orgPlan", ServerRatesheetID);
+                //nvc.Add("rateEffectiveDate", rateEffectiveOn);
+                //nvc.Add("calendarType", "day");
+                //nvc.Add("calendarValue", "1-7");
+                //nvc.Add("method", "uploadRateSheet");
+                //nvc.Add("isRateSheetAvail", "true");
+                //nvc.Add("copyWith", "None");
+                //nvc.Add("sheetWith", "None");
+                //nvc.Add("updateType", "append");
+
+                //string companytype = "Origination";
+                //using (rmsEntities rms = new rmsEntities())
+                //{
+                //    var jobqueue1 = rms.jobqueues.Where(j => j.RequestType == "Mapping" && j.ServerRatesheetNmae == ServerRatesheetName).FirstOrDefault();
+
+                //    if (jobqueue1.CompanyType == 2)
+                //        companytype = "Origination";
+                //    else
+                //        companytype = "Termination";
+
+                //}
+                //UpdateError("NewNexge Update ratesheet before calling ", companytype, "RatesheetLogs.txt", "", false);
+
+                //string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=" + companytype, fileName, "ratesheet", "text/csv", nvc, sessionID);
+
+                //string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=" + companytype, fileName, "filename", "application/octet-stream", nvc, sessionID);
+
+                //UpdateError("NewNexge Ratesheet Update Response", Response.ToString(), "RatesheetLogs.txt", "", false);
+                //var c = new JsonSerializer();
+                //var a = new RateSheetClass.RatePlanResponse();
+                //dynamic jsonObject = c.Deserialize(new StringReader(Response), a.GetType());
+                //result.status = jsonObject.status;
+                //result.Message = jsonObject.message;
+
+
+                string SessionId = AuthicateoldLogin(ip, User, password);
+                RestClient restClient1 = new RestClient();
+                restClient1.CookieContainer = new CookieContainer();
+                // Url4
+                string URI4 = "http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan&planUsage=Origination";
+                RestRequest wc = new RestRequest(URI4, Method.POST);
+                wc.AddHeader("Accept", "text / html, application / xhtml + xml, application / xml; q = 0.9,*/*;q=0.8");
+                wc.AddHeader("Accept-Encoding", "gzip, deflate");
+                wc.AddHeader("Accept-Language", "en-US,en;q=0.5");
+                wc.AddHeader("Cookie", "JSESSIONID=" + SessionId);
+                wc.AddHeader("Host", ip);
+                wc.AddHeader("Referer", "http://" + ip + "/admin/AdminCenter.jsp?userId=admin");
+                wc.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0");
+                wc.AddHeader("Content-Type", "application/x-www-form-urlencoded");
+                wc.AddCookie("JSESSIONID", SessionId);
+                wc.AddParameter("fromBpCode", ServerRatesheetID);
+                wc.AddParameter("fromBpName", ServerRatesheetName);
+                wc.AddParameter("owner", User);
+                wc.AddParameter("rateEffectiveDate", rateEffectiveOn);
+                wc.AddParameter("calendarType", "day");
+                wc.AddParameter("calendarValue", "1-7");
+                wc.AddParameter("isRateSheetAvail", "true");
+                wc.AddFile("fileName", DatanewNexge, ServerRatesheetName);
+                wc.AddParameter("updateType", "override");
+                wc.AddParameter("sheetWith", "None");
+                wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
+                restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
+
+                ServicePointManager.ServerCertificateValidationCallback =
+                delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+                { return true; };
+
+                IRestResponse response1 = restClient1.Execute(wc);
+                UpdateError("NewNexge Ratesheet Update Response", response1.Content, "RatesheetLogs.txt", "", false);
+                if (response1.Content.Contains("Rate Effective Billing Plan Added Successfully"))
+                {
+                    result.status = "success";
+                    result.Message = response1.Content;
+
+                }
+                else
+                {
+                    result.status = "failure";
+                    result.Message = response1.Content;
+                }
+
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                result.status = "failure";
+                result.Message = ex.Message;
+                return result;
+            }
+        }
+
+        //update Ratesheet Delete in pasupathi 
+        public static Response UploadRatesheetEffectiveOnDelete(List<ngt_rateslist1> RateSheet, string User, string ServerRatesheetName, string ServerRatesheetID, string rateEffectiveOn, string ip, string sessionID)
+        {
+            string[] ipadd = ip.Split(':');
+            Response result = new Response();
+            string fileName = ConversiontoNewNexege(RateSheet);
+            try
+            {
+                NameValueCollection nvc = new NameValueCollection();
+                // nvc.Add("actionId", "rateeffectiveBp");
+
+                nvc.Add("action_uri", "ratePlanManagement");
+                nvc.Add("fromBpName", ServerRatesheetName);
+                nvc.Add("fromBpCode", ServerRatesheetID == "" || ServerRatesheetID == null ? ServerRatesheetName : ServerRatesheetID);
+                nvc.Add("owner", User);
+                nvc.Add("orgPlan", ServerRatesheetID == "" || ServerRatesheetID == null ? ServerRatesheetName : ServerRatesheetID);
+                nvc.Add("rateEffectiveDate", rateEffectiveOn);
+                nvc.Add("calendarType", "day");
+                nvc.Add("calendarValue", "1-7");
+                nvc.Add("method", "uploadRateSheet");
+                nvc.Add("isRateSheetAvail", "false");
+                nvc.Add("copyWith", "None");
+
+
+                //return resolveXml(HttpUploadFile("http://" + ip + "/VerifyRateSheet.jsp?actionId=uploadRateSheetCSVFile&fileName=" + fileName, filePath, "file", "text/csv", nvc,sessionID));
+                // string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlanManagement.jsp?actionId=saveRateEffectivePlan", fileName, "ratesheet", "application/octet-stream", nvc, sessionID);
+                string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/allBillingPlanDetails.jsp?actionId=deleteRateEffBillingPlan&rateEffBPName=PlanOrigin_rateEff_" + rateEffectiveOn, fileName, "ratesheet", "application/octet-stream", nvc, sessionID);
+                var c = new JsonSerializer();
+                var a = new RateSheetClass.RatePlanResponse();
+                dynamic jsonObject = c.Deserialize(new StringReader(Response), a.GetType());
+                result.status = jsonObject.status;
+                result.Message = jsonObject.message;
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                result.status = "failure";
+                result.Message = ex.Message;
+                return result;
+            }
+        }
+
+
+        public static Response UploadRatesheetNow(List<ngt_rateslist1> RateSheet, string Description, bool usefortrm, string Pulse, int? GracePeriod, string User, string ServerRatesheetName, string ServerRatesheetID, string ip, string sessionID)
+        {
+            string[] ipadd = ip.Split(':');
+            Response result = new Response();
+            string[] Pulses = Pulse.Split('/');
+            string fileName = ConversiontoNewNexege(RateSheet);
+            try
+            {
+                NameValueCollection nvc = new NameValueCollection();
+                if (ServerRatesheetID != "")
+                {
+                    nvc.Add("bpCode", ServerRatesheetID);
+                }
+
+
+                // nvc.Add("actionId", "rateeffectiveBp");
+                nvc.Add("currencyType", "USD");
+                nvc.Add("useForOr", "true");
+                nvc.Add("useForTr", usefortrm.ToString());
+                nvc.Add("bpSeqNo", "-1");
+                nvc.Add("calendarType", "day");
+                nvc.Add("calendarValue", "1-7");
+                nvc.Add("decimalDigits", "6");
+                nvc.Add("startPulse1", Pulses[0]);
+                nvc.Add("nextPulse1", Pulses[1]);
+                nvc.Add("addressRuleId", "-1");
+                nvc.Add("retainOtherOldDestinations1", "true");
+                nvc.Add("enableProfitRouting", "false");
+                nvc.Add("externalGatewayCLI", "false");
+                nvc.Add("bpStatus", "true");
+                nvc.Add("loggedInUser", User);
+                nvc.Add("profitChecking1", "false");
+                nvc.Add("bpName", ServerRatesheetName);
+                nvc.Add("owner", User);
+
+                nvc.Add("descriptionVar", Description);
+                nvc.Add("gracePeriod1", GracePeriod.ToString());
+
+
+
+
+
+                string Response = HttpUploadFileAdvanced("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan", fileName, "ratesheet1", "text/csv", nvc, sessionID);
+                var c = new JsonSerializer();
+                var a = new RateSheetClass.RatePlanResponse();
+                dynamic jsonObject = c.Deserialize(new StringReader(Response), a.GetType());
+                result.status = jsonObject.status;
+                result.Message = jsonObject.bpCode;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.status = "failure";
+                result.Message = ex.Message;
+                return result;
+            }
+        }
+
+        private static string HttpUploadFile(string url, string file, string paramName, string contentType, NameValueCollection nvc, string sessionID)
+        {
+            string output = "";
+            //log.Debug(string.Format("Uploading {0} to {1}", file, url));
+            string boundary = "---------------------------" + DateTime.Now.Ticks.ToString("x");
+            byte[] boundarybytes = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "\r\n");
+
+            wr = (HttpWebRequest)WebRequest.Create(url);
+            wr.ContentType = "multipart/form-data; boundary=" + boundary;
+            wr.Method = "POST";
+            wr.KeepAlive = true;
+            wr.Credentials = System.Net.CredentialCache.DefaultCredentials;
+            cookies.Add(new Cookie() { Name = "JSESSIONID", Value = sessionID, Domain = "72.28.118.56" });
+
+            //cookies.Add(new Cookie() { Name = "JSESSIONID", Value = sessionID, Domain = "180.87.64.54" });
+
+            wr.CookieContainer = cookies;
+
+            //cookies.Add(new Cookie(){Name="JSESSIONID",Value=sessionID,Domain="TestingNexge"});
+            //wr.CookieContainer = cookies;
+
+
+            Stream rs = wr.GetRequestStream();
+
+            string formdataTemplate = "Content-Disposition: form-data; name=\"{0}\"\r\n\r\n{1}";
+            foreach (string key in nvc.Keys)
+            {
+                rs.Write(boundarybytes, 0, boundarybytes.Length);
+                string formitem = string.Format(formdataTemplate, key, nvc[key]);
+                byte[] formitembytes = System.Text.Encoding.UTF8.GetBytes(formitem);
+                rs.Write(formitembytes, 0, formitembytes.Length);
+            }
+            rs.Write(boundarybytes, 0, boundarybytes.Length);
+
+            string headerTemplate = "Content-Disposition: form-data; name=\"{0}\"; filename=\"{1}\"\r\nContent-Type: {2}\r\n\r\n";
+            string header = string.Format(headerTemplate, paramName, file, contentType);
+            byte[] headerbytes = System.Text.Encoding.UTF8.GetBytes(header);
+            rs.Write(headerbytes, 0, headerbytes.Length);
+
+
+
+            FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            byte[] buffer = new byte[4096];
+            int bytesRead = 0;
+            while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) != 0)
+            {
+                rs.Write(buffer, 0, bytesRead);
+            }
+            fileStream.Close();
+
+            byte[] trailer = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "--\r\n");
+            rs.Write(trailer, 0, trailer.Length);
+            rs.Close();
+
+            WebResponse wresp = null;
+            try
+            {
+                wresp = wr.GetResponse();
+                HttpWebResponse response = (HttpWebResponse)wr.GetResponse();
+                foreach (Cookie Value in response.Cookies)
+                {
+                    NexgesessionId = Value.Name + "=" + Value.Value;
+                    break;
+                }
+                Stream stream2 = wresp.GetResponseStream();
+                StreamReader reader2 = new StreamReader(stream2);
+                output = reader2.ReadToEnd();
+
+                //log.Debug(string.Format("File uploaded, server response is: {0}", reader2.ReadToEnd()));
+
+            }
+            catch (Exception ex)
+            {
+                //log.Error("Error uploading file", ex);
+                output = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response-data><actionid>uploadRateSheetCSVFile</actionid><service-provider>AS</service-provider><status>false</status><cs-data>Error uploading file : " + ex.Message + "</cs-data></response-data>";
+                if (wresp != null)
+                {
+                    wresp.Close();
+                    wresp = null;
+                }
+            }
+            finally
+            {
+                wr = null;
+
+            }
+            return output;
+        }
+
+        private static string AuthicateoldLogin(string ipaddress, string user, string password)
+        {
+            string cookie = "";
+            string service = "";
+            //calling login api
+            try
+            {
+                password = Common.Decrypt(password);
+                password = HttpUtility.UrlEncode(password);
+                //string service = String.Format(ConfigurationManager.AppSettings["OldLoginUrl"].ToString(), ipaddress, user, password, ipaddress.Split(':')[0]);
+                //string service = ConfigurationManager.AppSettings["loginUrl"].ToString().Replace("$ipaddress$", ipaddress).Replace("$user$", user).Replace("$password$", password);
+
+                // old code pasupathi
+                //if (ipaddress == ConfigurationManager.AppSettings["NewNexgeIp"].ToString())
+                // New code
+                if (ipaddress == ConfigurationManager.AppSettings["NewNexgeIpExceptNimbuzz"].ToString())
+                    service = ConfigurationManager.AppSettings["loginUrlNewNexge"].ToString().Replace("$ipaddress$", ipaddress).Replace("$user$", user).Replace("$password$", password);
+                else
+                    service = ConfigurationManager.AppSettings["loginUrlNewNexgeSingle"].ToString().Replace("$ipaddress$", ipaddress).Replace("$user$", user).Replace("$password$", password).Replace("$ip$", ipaddress.Split(':')[0]);
+
+                cookies = new CookieContainer();
+                wr = (HttpWebRequest)WebRequest.Create(service);
+                wr.KeepAlive = true;
+                wr.CookieContainer = cookies;
+                WebResponse wresp = wr.GetResponse();
+                HttpWebResponse response = (HttpWebResponse)wr.GetResponse();
+                Stream stream2 = wresp.GetResponseStream();
+                StreamReader reader2 = new StreamReader(stream2);
+                string output = reader2.ReadToEnd();
+                loginResult lr = JsonConvert.DeserializeObject<loginResult>(output);
+
+                if (output.Contains("Invalid User"))
+                {
+                    return "";
+                }
+                else
+                {
+                    return lr.JSessionId;
+                    //if (wr.Headers["Cookie"] != null)
+                    //{
+                    //    //IEnumerable<string> headerValues = wr.Headers.GetValues("Cookie");
+                    //    //return headerValues.FirstOrDefault().Replace("JSESSIONID=", "");
+                    //    return lr.JSessionId;
+                    //}
+                    //else
+                    //{
+                    //    return "";
+                    //}
+
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateError("AuthicateoldLogin Error..", ipaddress.ToString(), "RatesheetLogs.txt", "User Name:" + user + "Password: " + password + " Service:-" + service, false);
+                return "";
+            }
+        }
+
+        // pasupathi Created for New nexge login
+        private static string AuthicateoldLoginPush(string ipaddress, string user, string password)
+        {
+
+            string cookie = "";
+            //calling login api
+            try
+            {
+                password = Common.Decrypt(password);
+
+                //string URI = "http://" + ipaddress + "/admin/loginAction?actionId=userLoginWithJson&action_uri=loginNew&userId=admin&password=br2dRusus5ab&url=72.28.118.56&returnUrl=72.28.118.56%2Fadmin&bustCache=476452523372";
+
+                string URI = "http://" + ipaddress + "/admin/loginAction?actionId=userLoginWithJson&action_uri=loginNew&userId=admin&password=" + password + "& url=" + ipaddress + "&returnUrl=" + ipaddress + "%2Fadmin&bustCache=476452523372";
+                RestClient restClient1 = new RestClient();
+                restClient1.CookieContainer = new System.Net.CookieContainer();
+
+                RestRequest wc = new RestRequest(URI, Method.POST);
+                wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
+
+                wc.AddHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+                wc.AddHeader("Accept-Encoding", "gzip, deflate");
+                wc.AddHeader("Accept-Language", "en-US,en;q=0.5");
+                wc.AddHeader("Host", ipaddress);
+                wc.AddHeader("Referer", "http://" + ipaddress + "/admin/loginAction");
+                wc.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; Win64; x64; rv:49.0) Gecko/20100101 Firefox/49.0");
+                wc.AddHeader("Content-Type", "application/x-www-form-urlencoded");
+
+                wc.AddParameter("actionId", "userLoginWithJson");
+                wc.AddParameter("action_uri", "loginNew");
+                wc.AddParameter("userId", user);
+                wc.AddParameter("password", password);
+                wc.AddParameter("url", ipaddress);
+                wc.AddParameter("returnurl", ipaddress + "/admin");
+                wc.AddParameter("bustCache", "476452523372");
+
+
+                ServicePointManager.ServerCertificateValidationCallback =
+        delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        { return true; };
+
+                restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
+                IRestResponse response1 = restClient1.Execute(wc);
+                UpdateError("NewNexge Ratesheet LoginPush Response", response1.Content.ToString(), "RatesheetLogs.txt", "", false);
+                if (response1.Content.ToString().Contains("invalid user") || response1.Content.ToString().Contains("failure"))
+                {
+                    return "";
+                }
+                else
+                {
+                    cookie = response1.Cookies[0].Value;
+                    NexgesessionId = cookie;
+                    return cookie;
+                }
+            }
+            catch (Exception ex)
+            {
+                return "";
+            }
+        }
+
+        // pasupathi Created for New nexge login Gulf
+        private static string AuthicateoldLoginGulf(string ipaddress, string user, string password)
+        {
+
+            string cookie = "";
+            //calling login api
+            try
+            {
+                password = Common.Decrypt(password);
+
+                //string URI = "http://" + ipaddress + "/admin/loginAction?actionId=userLoginWithJson&action_uri=loginNew&userId=admin&password=br2dRusus5ab&url=72.28.118.56&returnUrl=72.28.118.56%2Fadmin&bustCache=476452523372";
+
+                string URI = "http://" + ipaddress + "/admin/loginAction";
+                RestClient restClient1 = new RestClient();
+                restClient1.CookieContainer = new System.Net.CookieContainer();
+
+                RestRequest wc = new RestRequest(URI, Method.POST);
+                wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
+
+                wc.AddHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+                wc.AddHeader("Accept-Encoding", "gzip, deflate");
+                wc.AddHeader("Accept-Language", "en-US,en;q=0.5");
+                wc.AddHeader("Host", ipaddress);
+                wc.AddHeader("Referer", "http://" + ipaddress + "/admin/login");
+                wc.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; Win64; x64; rv:49.0) Gecko/20100101 Firefox/49.0");
+                wc.AddHeader("Content-Type", "application/x-www-form-urlencoded");
+
+                wc.AddParameter("actionId", "userLoginWithJson");
+                wc.AddParameter("action_uri", "loginNew");
+                wc.AddParameter("userId", user);
+                wc.AddParameter("password", password);
+                wc.AddParameter("url", ipaddress);
+                wc.AddParameter("remoteIpAddress", ConfigurationManager.AppSettings["RemoteIP"].ToString());
+
+
+
+                ServicePointManager.ServerCertificateValidationCallback =
+        delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        { return true; };
+
+                restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
+                IRestResponse response1 = restClient1.Execute(wc);
+                UpdateError("NewNexge Ratesheet LoginGulf Response", response1.Content.ToString(), "RatesheetLogs.txt", "", false);
+                if (response1.Content.ToString().Contains("invalid user") || response1.Content.ToString().Contains("failure"))
+                {
+                    return "";
+                }
+                else
+                {
+                    cookie = response1.Cookies[0].Value;
+                    NexgesessionId = cookie;
+                    return cookie;
+                }
+            }
+            catch (Exception ex)
+            {
+                return "";
+            }
+        }
+
+        public class ngt_rateslist1
+        {
+            public int Id { get; set; }
+            public DateTime Effective_on { get; set; }
+            public decimal Call_rate { get; set; }
+            public int Grace_period { get; set; }
+            public int Minimal_time { get; set; }
+            public int Resolution { get; set; }
+            public int ngt_region_codeId { get; set; }
+            public string ngt_regionName { get; set; }
+            public string Description { get; set; }
+            public decimal Connection_charge { get; set; }
+            public string Active { get; set; }
+            public int Priority { get; set; }
+            public string Trunck { get; set; }
+            public int BatchID { get; set; }
+            public DateTime CreatedOn { get; set; }
+            public int Start_Pulse { get; set; }
+            public int Next_Pulse { get; set; }
+
+        }
+
+        private static List<SuccessResponse> UploadRates(List<RMSServices.RatesheetV2.ngt_rateslist> RateSheet, string Description, bool usefortrm, string Pulse, int? GracePeriod, string User, string ServerRatesheetName, string ServerRatesheetID, string IpAddress, string SessionID)
+        {
+            string password = "";
+            List<SuccessResponse> response = new List<SuccessResponse>();
+            try
+            {
+
+                List<ngt_rateslist1> RateSheetNow = new List<ngt_rateslist1>();
+
+                List<List<ngt_rateslist1>> EffectiveRateSheet = new List<List<ngt_rateslist1>>();
+                List<ngt_rateslist1> ConvertedRatesheet = new List<ngt_rateslist1>();
+                foreach (var rate in RateSheet)
+                {
+                    ConvertedRatesheet.Add(new ngt_rateslist1()
+                    {
+                        Id = rate.Id,
+                        Effective_on = Convert.ToDateTime(rate.Effective_on),
+                        Call_rate = rate.Call_rate,
+                        Grace_period = rate.Grace_period,
+                        Minimal_time = rate.Minimal_time,
+                        Resolution = rate.Resolution,
+                        ngt_region_codeId = rate.ngt_region_codeId,
+                        ngt_regionName = rate.ngt_regionName,
+                        Description = rate.Description,
+                        Connection_charge = rate.Connection_charge,
+                        Active = rate.Active,
+                        Priority = rate.Priority,
+                        Trunck = rate.Trunck,
+                        BatchID = rate.BatchID,
+                        CreatedOn = Convert.ToDateTime(rate.CreatedOn),
+                        Start_Pulse = Convert.ToInt32(rate.StartPulse),
+                        Next_Pulse = Convert.ToInt32(rate.NextPulse)
+
+                    });
+                }
+                List<List<ngt_rateslist1>> groups = ConvertedRatesheet.OrderByDescending(x => x.Effective_on).GroupBy(x => x.Effective_on).Select(grp => grp.ToList()).ToList();
+                foreach (var group in groups)
+                {
+
+                    if (Convert.ToDateTime(group[0].Effective_on).Date > DateTime.UtcNow)
+                    {
+                        EffectiveRateSheet.Add(group);
+                    }
+                    else
+                    {
+                        RateSheetNow.AddRange(group);
+                    }
+
+
+                }
+                string filePath = HostingEnvironment.MapPath("~/logs/RatesheetLogs.txt").ToString();
+                System.IO.StreamWriter file1 = File.AppendText(filePath);
+                file1.WriteLine(DateTime.Now.ToString());
+                if (RateSheetNow.Count > 0)
+                {
+
+
+                    //Response res = UploadRatesheetNow(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    Response res = UploadRatesheetNowAdvanced(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    //        Response res = UploadRatesheetNowAdvancedNew(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    response.Add(new SuccessResponse() { Message = res.Message, status = "success Ratesheet", Value = string.Format("{0:yyyy-MM-dd 00:00:00}", DateTime.Now) });
+                    ServerRatesheetID = res.Message;
+                }
+
+
+                if (EffectiveRateSheet.Count > 0)
+                {
+                    foreach (var group in EffectiveRateSheet)
+                    {
+                        Response res = UploadRatesheetEffectiveOn(group, User, ServerRatesheetName, ServerRatesheetID, string.Format("{0:yyyy-MM-dd HH:mm:ss}", DateTime.Now.AddMinutes(Convert.ToInt16(ConfigurationManager.AppSettings["NewNexgeRatesheetMinute"]))), IpAddress, SessionID, password, usefortrm);
+                        response.Add(new SuccessResponse() { Message = res.Message, status = res.status, Value = string.Format("{0:yyyy-MM-dd HH:mm:ss}", DateTime.Now.AddMinutes(Convert.ToInt16(ConfigurationManager.AppSettings["NewNexgeRatesheetMinute"]))) });
+                    }
+                }
+
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                response.Add(new SuccessResponse() { Message = ex.Message, status = "failure" });
+                return response;
+            }
+        }
+
+
+        // Pasupathi created new method
+
+        private static List<SuccessResponse> NewUploadRates(List<RMSServices.RatesheetV2.ngt_rateslist> RateSheet, string Description, bool usefortrm, string Pulse, int? GracePeriod, string User, string ServerRatesheetName, string ServerRatesheetID, string IpAddress, string SessionID, string actiontype, string password, int RatesheetId)
+        {
+            UpdateError("NewNexge NewUploadRates Started..", actiontype.ToString() + "CompanyType:" + usefortrm, "RatesheetLogs.txt", ServerRatesheetName, false);
+            List<SuccessResponse> response = new List<SuccessResponse>();
+            try
+            {
+                List<ngt_rateslist1> RateSheetNow = new List<ngt_rateslist1>();
+                List<List<ngt_rateslist1>> EffectiveRateSheet = new List<List<ngt_rateslist1>>();
+                List<ngt_rateslist1> ConvertedRatesheet = new List<ngt_rateslist1>();
+                foreach (var rate in RateSheet)
+                {
+                    ConvertedRatesheet.Add(new ngt_rateslist1()
+                    {
+                        Id = rate.Id,
+                        Effective_on = Convert.ToDateTime(rate.Effective_on),
+                        Call_rate = rate.Call_rate,
+                        Grace_period = rate.Grace_period,
+                        Minimal_time = rate.Minimal_time,
+                        Resolution = rate.Resolution,
+                        ngt_region_codeId = rate.ngt_region_codeId,
+                        ngt_regionName = rate.ngt_regionName,
+                        Description = rate.Description,
+                        Connection_charge = rate.Connection_charge,
+                        Active = rate.Active,
+                        Priority = rate.Priority,
+                        Trunck = rate.Trunck,
+                        BatchID = rate.BatchID,
+                        CreatedOn = Convert.ToDateTime(rate.CreatedOn),
+                        Start_Pulse = Convert.ToInt32(rate.StartPulse),
+                        Next_Pulse = Convert.ToInt32(rate.NextPulse)
+
+                    });
+                }
+                List<List<ngt_rateslist1>> groups = ConvertedRatesheet.OrderByDescending(x => x.Effective_on).GroupBy(x => x.Effective_on).Select(grp => grp.ToList()).ToList();
+
+                UpdateError("NewNexge NewUploadRates Converted ratesheet..", groups.Count().ToString(), "RatesheetLogs.txt", ServerRatesheetName, false);
+                foreach (var group in groups)
+                {
+
+                    //if (Convert.ToDateTime(group[0].Effective_on).Date > DateTime.UtcNow)
+                    //{
+                    EffectiveRateSheet.Add(group);
+                    //}
+                    //else
+                    //{
+                    //    RateSheetNow.AddRange(group);
+                    //}
+
+
+                }
+                UpdateError("NewNexge NewUploadRates Groups  Created..", EffectiveRateSheet.Count().ToString(), "RatesheetLogs.txt", ServerRatesheetName, false);
+
+                // // Pasupathi Commented
+
+                //string filePath = HostingEnvironment.MapPath("~/logs/RatesheetLogs.txt").ToString();
+                //System.IO.StreamWriter file1 = File.AppendText(filePath);
+                //file1.WriteLine(DateTime.Now.ToString());
+                // Pasupathi
+
+
+                if (RateSheetNow.Count > 0)
+                {
+                    //Response res = UploadRatesheetNow(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    Response res = NewUploadRatesheetNowAdvanced(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID, actiontype);
+                    //        Response res = UploadRatesheetNowAdvancedNew(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    response.Add(new SuccessResponse() { Message = res.Message, status = "success Ratesheet", Value = string.Format("{0:yyyy-MM-dd 00:00:00}", DateTime.Now) });
+                    ServerRatesheetID = res.Message;
+                }
+                if (EffectiveRateSheet.Count > 0)
+                {
+                    UpdateError("NewNexge Update Started..", EffectiveRateSheet.Count.ToString(), "RatesheetLogs.txt", ServerRatesheetName, false);
+                    foreach (var group in EffectiveRateSheet)
+                    {
+                        Response res = new Response();
+                        var EffectiveDategroup = group.Select(a => a.Effective_on).FirstOrDefault();
+
+                        //if (string.Format("{0:yyyy-MM-dd HH:mm:ss}", group[0].Effective_on.AddHours(23)) == string.Format("{0:yyyy-MM-dd 23:00:00}", DateTime.Now))
+                        //{
+
+
+                        //if (string.Format("{0:yyyy-MM-dd HH:mm:ss}", EffectiveDategroup.AddHours(23)) == string.Format("{0:yyyy-MM-dd 23:00:00}", DateTime.Now))
+                        //{
+                        //    using (rmsEntities rms = new rmsEntities())
+                        //    {
+                        //        var RateList = RateSheet.Where(m => Convert.ToDateTime(m.Effective_on) > DateTime.Now).Select(k => k.ngt_region_codeId).ToList();
+
+                        //        // var Effectivedate = group[0].Effective_on;
+                        //        // var Effectivedate = group.Select(a => a.Effective_on).FirstOrDefault();
+
+                        //        ngt_rates Batch = rms.ngt_rates.Where(t => t.RatesheetID == RatesheetId && t.Effective_on > EffectiveDategroup && RateList.Contains(t.ngt_region_codeId)).OrderByDescending(t => t.Effective_on).FirstOrDefault();
+
+                        //        if (Batch != null)
+                        //        {
+                        //            var RatelistOld = rms.ngt_rates.Where(t => t.RatesheetID == RatesheetId && t.Effective_on > EffectiveDategroup && t.BatchID == Batch.BatchID && RateList.Contains(t.ngt_region_codeId)).ToList();
+
+                        //            foreach (var List in RatelistOld)
+                        //            {
+                        //                group.Add(new ngt_rateslist1
+                        //                {
+                        //                    Id = List.Id,
+                        //                    // Effective_on = group[0].Effective_on,
+                        //                    Effective_on = EffectiveDategroup,
+                        //                    Call_rate = List.Call_rate,
+                        //                    Grace_period = List.Grace_period,
+                        //                    Minimal_time = List.Minimal_time,
+                        //                    Resolution = List.Resolution,
+                        //                    ngt_region_codeId = List.ngt_region_codeId,
+                        //                    ngt_regionName = (from a in rms.ngt_region_code
+                        //                                      where a.Id == List.ngt_region_codeId && a.ngt_PartitionId == 10
+                        //                                      select a.Region_hash_code).FirstOrDefault(),
+                        //                    Description = List.Description,
+                        //                    Connection_charge = List.Connection_charge,
+                        //                    Active = List.Active,
+                        //                    Priority = List.Priority,
+                        //                    Trunck = List.Trunck,
+                        //                    BatchID = List.BatchID,
+                        //                    //  CreatedOn = group[0].Effective_on,
+                        //                    CreatedOn = EffectiveDategroup,
+                        //                    Start_Pulse = List.Start_Pulse,
+                        //                    Next_Pulse = List.Next_Pulse
+                        //                });
+                        //            }
+                        //            UpdateError("NewNexge UploadRatesheetEffectiveOnOvverride First Update Started..", string.Format("{0:yyyy-MM-dd HH:mm:ss}", DateTime.Now.AddMinutes(Convert.ToInt16(ConfigurationManager.AppSettings["NewNexgeRatesheetMinute"]))), "RatesheetLogs.txt", ServerRatesheetName + "  Batch:=" + Batch, false);
+                        //            res = UploadRatesheetEffectiveOnOvverride(group, User, ServerRatesheetName, ServerRatesheetID, string.Format("{0:yyyy-MM-dd HH:mm:ss}", DateTime.Now.AddMinutes(Convert.ToInt16(ConfigurationManager.AppSettings["NewNexgeRatesheetMinute"]))), IpAddress, SessionID, password, usefortrm);
+
+                        //        }
+                        //        else
+                        //        {
+                        //            UpdateError("NewNexge UploadRatesheetEffectiveOnOvverride Second Update Started..", string.Format("{0:yyyy-MM-dd HH:mm:ss}", DateTime.Now.AddMinutes(Convert.ToInt16(ConfigurationManager.AppSettings["NewNexgeRatesheetMinute"]))), "RatesheetLogs.txt", " Ratesheet Name: " + ServerRatesheetName + "  Batch:=" + Batch, false);
+
+                        //            res = UploadRatesheetEffectiveOnOvverride(group, User, ServerRatesheetName, ServerRatesheetID, string.Format("{0:yyyy-MM-dd HH:mm:ss}", DateTime.Now.AddMinutes(Convert.ToInt16(ConfigurationManager.AppSettings["NewNexgeRatesheetMinute"]))), IpAddress, SessionID, password, usefortrm);
+                        //        }
+                        //    }
+                        //}
+                        //else
+                        //{
+
+                        UpdateError("NewNexge UploadRatesheetEffectiveOn Update Started..", string.Format("{0:yyyy-MM-dd HH:mm:ss}", EffectiveDategroup), "RatesheetLogs.txt", ServerRatesheetName, false);
+
+                        //res = UploadRatesheetEffectiveOn(group, User, ServerRatesheetName, ServerRatesheetID, string.Format("{0:yyyy-MM-dd HH:mm:ss}", group[0].Effective_on), IpAddress, SessionID, password, usefortrm);
+
+                        //List<ngt_rateslist1> items = new List<ngt_rateslist1>();
+                        //items = group.Where(s => s.Effective_on == EffectiveDategroup).ToList();
+
+                        if (Convert.ToDateTime(EffectiveDategroup) <= Convert.ToDateTime(DateTime.Now))
+                            res = UploadRatesheetEffectiveOn(group, User, ServerRatesheetName, ServerRatesheetID, string.Format("{0:yyyy-MM-dd HH:mm:ss}", string.Format("{0:yyyy-MM-dd HH:mm:ss}", DateTime.Now.AddMinutes(Convert.ToInt16(ConfigurationManager.AppSettings["NewNexgeRatesheetMinute"])))), IpAddress, SessionID, password, usefortrm);
+                        else
+                            res = UploadRatesheetEffectiveOn(group, User, ServerRatesheetName, ServerRatesheetID, string.Format("{0:yyyy-MM-dd HH:mm:ss}", string.Format("{0:yyyy-MM-dd HH:mm:ss}", EffectiveDategroup)), IpAddress, SessionID, password, usefortrm);
+
+                        //  }
+
+                        response.Add(new SuccessResponse() { Message = res.Message, status = res.status, Value = string.Format("{0:yyyy-MM-dd HH:mm:ss}", EffectiveDategroup) });
+                    }
+                }
+
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                UpdateError("NewNexge NewUploadRates Error..", ex.Message, "RatesheetLogs.txt", ServerRatesheetName, false);
+
+                response.Add(new SuccessResponse() { Message = ex.Message, status = "failure" });
+                return response;
+            }
+        }
+        private static List<SuccessResponse> NewReplaceRates(List<RMSServices.RatesheetV2.ngt_rateslist> RateSheet, string Description, bool usefortrm, string Pulse, int? GracePeriod, string User, string ServerRatesheetName, string ServerRatesheetID, string IpAddress, string SessionID, string actiontype, string password)
+        {
+            UpdateError("NewNexge NewReplaceRates Started..", actiontype.ToString() + "CompanyType:" + usefortrm, "RatesheetLogs.txt", ServerRatesheetName, false);
+            List<SuccessResponse> response = new List<SuccessResponse>();
+            try
+            {
+                List<ngt_rateslist1> RateSheetNow = new List<ngt_rateslist1>();
+
+                List<List<ngt_rateslist1>> EffectiveRateSheet = new List<List<ngt_rateslist1>>();
+                List<ngt_rateslist1> ConvertedRatesheet = new List<ngt_rateslist1>();
+                foreach (var rate in RateSheet)
+                {
+                    ConvertedRatesheet.Add(new ngt_rateslist1()
+                    {
+                        Id = rate.Id,
+                        Effective_on = Convert.ToDateTime(rate.Effective_on),
+                        Call_rate = rate.Call_rate,
+                        Grace_period = rate.Grace_period,
+                        Minimal_time = rate.Minimal_time,
+                        Resolution = rate.Resolution,
+                        ngt_region_codeId = rate.ngt_region_codeId,
+                        ngt_regionName = rate.ngt_regionName,
+                        Description = rate.Description,
+                        Connection_charge = rate.Connection_charge,
+                        Active = rate.Active,
+                        Priority = rate.Priority,
+                        Trunck = rate.Trunck,
+                        BatchID = rate.BatchID,
+                        CreatedOn = Convert.ToDateTime(rate.CreatedOn),
+                        Start_Pulse = Convert.ToInt32(rate.StartPulse),
+                        Next_Pulse = Convert.ToInt32(rate.NextPulse)
+
+                    });
+                }
+                List<List<ngt_rateslist1>> groups = ConvertedRatesheet.OrderByDescending(x => x.Effective_on).GroupBy(x => x.Effective_on).Select(grp => grp.ToList()).ToList();
+                foreach (var group in groups)
+                {
+                    EffectiveRateSheet.Add(group);
+                }
+                string filePath = HostingEnvironment.MapPath("~/logs/RatesheetLogs.txt").ToString();
+                System.IO.StreamWriter file1 = File.AppendText(filePath);
+                file1.WriteLine(DateTime.Now.ToString());
+
+                if (EffectiveRateSheet.Count > 0)
+                {
+
+                    foreach (var group in EffectiveRateSheet)
+                    {
+                        Response res = new Response();
+                        var EffectiveDategroup = group.Select(a => a.Effective_on).FirstOrDefault();
+
+                        if (Convert.ToDateTime(EffectiveDategroup) <= Convert.ToDateTime(DateTime.Now))
+                            res = UploadRatesheetEffectiveOnOvverride(group, User, ServerRatesheetName, ServerRatesheetID, string.Format("{0:yyyy-MM-dd HH:mm:ss}", DateTime.Now.AddMinutes(Convert.ToInt16(ConfigurationManager.AppSettings["NewNexgeRatesheetMinute"]))), IpAddress, SessionID, password, usefortrm);
+                        else
+                            res = UploadRatesheetEffectiveOnOvverride(group, User, ServerRatesheetName, ServerRatesheetID, string.Format("{0:yyyy-MM-dd HH:mm:ss}", EffectiveDategroup), IpAddress, SessionID, password, usefortrm);
+
+                        response.Add(new SuccessResponse() { Message = res.Message, status = res.status, Value = string.Format("{0:yyyy-MM-dd HH:mm:ss}", EffectiveDategroup) });
+                    }
+                }
+                return response;
+            }
+            catch (Exception ex)
+            {
+                response.Add(new SuccessResponse() { Message = ex.Message, status = "failure" });
+                return response;
+            }
+        }
+
+        private static List<SuccessResponse> UploadRatesDelete(List<RMSServices.RatesheetV2.ngt_rateslist> RateSheet, List<RMSServices.RatesheetV2.ngt_rateslist> RateSheetDelete, string Description, bool usefortrm, string Pulse, int? GracePeriod, string User, string ServerRatesheetName, string ServerRatesheetID, string IpAddress, string SessionID)
+        {
+            string password = "";
+            List<SuccessResponse> response = new List<SuccessResponse>();
+            try
+            {
+
+                List<ngt_rateslist1> RateSheetNow = new List<ngt_rateslist1>();
+                List<ngt_rateslist1> RateSheetNowDelete = new List<ngt_rateslist1>();
+
+                List<List<ngt_rateslist1>> EffectiveRateSheet = new List<List<ngt_rateslist1>>();
+                List<List<ngt_rateslist1>> EffectiveRateSheetDelete = new List<List<ngt_rateslist1>>();
+
+                List<ngt_rateslist1> ConvertedRatesheet = new List<ngt_rateslist1>();
+                List<ngt_rateslist1> ConvertedRatesheetDelete = new List<ngt_rateslist1>();
+                foreach (var rate in RateSheet)
+                {
+                    ConvertedRatesheet.Add(new ngt_rateslist1()
+                    {
+                        Id = rate.Id,
+                        Effective_on = Convert.ToDateTime(rate.Effective_on),
+                        Call_rate = rate.Call_rate,
+                        Grace_period = rate.Grace_period,
+                        Minimal_time = rate.Minimal_time,
+                        Resolution = rate.Resolution,
+                        ngt_region_codeId = rate.ngt_region_codeId,
+                        ngt_regionName = rate.ngt_regionName,
+                        Description = rate.Description,
+                        Connection_charge = rate.Connection_charge,
+                        Active = rate.Active,
+                        Priority = rate.Priority,
+                        Trunck = rate.Trunck,
+                        BatchID = rate.BatchID,
+                        CreatedOn = Convert.ToDateTime(rate.CreatedOn),
+                        Start_Pulse = Convert.ToInt32(rate.StartPulse),
+                        Next_Pulse = Convert.ToInt32(rate.NextPulse)
+
+                    });
+                }
+                foreach (var rate in RateSheetDelete)
+                {
+                    ConvertedRatesheetDelete.Add(new ngt_rateslist1()
+                    {
+                        Id = rate.Id,
+                        Effective_on = Convert.ToDateTime(rate.Effective_on),
+                        Call_rate = rate.Call_rate,
+                        Grace_period = rate.Grace_period,
+                        Minimal_time = rate.Minimal_time,
+                        Resolution = rate.Resolution,
+                        ngt_region_codeId = rate.ngt_region_codeId,
+                        ngt_regionName = rate.ngt_regionName,
+                        Description = rate.Description,
+                        Connection_charge = rate.Connection_charge,
+                        Active = rate.Active,
+                        Priority = rate.Priority,
+                        Trunck = rate.Trunck,
+                        BatchID = rate.BatchID,
+                        CreatedOn = Convert.ToDateTime(rate.CreatedOn),
+                        Start_Pulse = Convert.ToInt32(rate.StartPulse),
+                        Next_Pulse = Convert.ToInt32(rate.NextPulse)
+
+                    });
+                }
+                List<List<ngt_rateslist1>> groups = ConvertedRatesheet.OrderByDescending(x => x.Effective_on).GroupBy(x => x.Effective_on).Select(grp => grp.ToList()).ToList();
+                List<List<ngt_rateslist1>> groupsDelete = ConvertedRatesheetDelete.OrderByDescending(x => x.Effective_on).GroupBy(x => x.Effective_on).Select(grp => grp.ToList()).ToList();
+
+                foreach (var group in groups)
+                {
+
+                    if (Convert.ToDateTime(group[0].Effective_on).Date > DateTime.UtcNow)
+                    {
+                        EffectiveRateSheet.Add(group);
+                    }
+                    else
+                    {
+                        RateSheetNow.AddRange(group);
+                    }
+
+
+                }
+                foreach (var group in groupsDelete)
+                {
+
+                    if (Convert.ToDateTime(group[0].Effective_on).Date > DateTime.UtcNow)
+                    {
+                        EffectiveRateSheetDelete.Add(group);
+                    }
+                    else
+                    {
+                        RateSheetNowDelete.AddRange(group);
+                    }
+
+
+                }
+                string filePath = HostingEnvironment.MapPath("~/logs/RatesheetLogs.txt").ToString();
+                System.IO.StreamWriter file1 = File.AppendText(filePath);
+                file1.WriteLine(DateTime.Now.ToString());
+                if (RateSheetNow.Count > 0)
+                {
+
+
+                    //Response res = UploadRatesheetNow(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    Response res = UploadRatesheetNowAdvanced(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    //        Response res = UploadRatesheetNowAdvancedNew(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    response.Add(new SuccessResponse() { Message = res.Message, status = "success Ratesheet", Value = string.Format("{0:yyyy-MM-dd 00:00:00}", DateTime.Now) });
+                    ServerRatesheetID = res.Message;
+                }
+
+
+                //Delete Functionality pasupathi
+                if (RateSheetNowDelete.Count > 0)
+                {
+
+
+                    //Response res = UploadRatesheetNow(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    Response res = UploadRatesheetNowAdvancedDelete(RateSheetNowDelete, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    //        Response res = UploadRatesheetNowAdvancedNew(RateSheetNow, Description, usefortrm, Pulse, GracePeriod, User, ServerRatesheetName, ServerRatesheetID, IpAddress, SessionID);
+                    response.Add(new SuccessResponse() { Message = res.Message, status = "success Ratesheet", Value = string.Format("{0:yyyy-MM-dd 00:00:00}", DateTime.Now) });
+                    ServerRatesheetID = res.Message;
+                }
+
+
+                if (EffectiveRateSheet.Count > 0)
+                {
+                    foreach (var group in EffectiveRateSheet)
+                    {
+                        Response res = UploadRatesheetEffectiveOn(group, User, ServerRatesheetName, ServerRatesheetID, string.Format("{0:yyyy-MM-dd HH:mm:ss}", group[0].Effective_on), IpAddress, SessionID, password, usefortrm);
+                        response.Add(new SuccessResponse() { Message = res.Message, status = res.status, Value = string.Format("{0:yyyy-MM-dd HH:mm:ss}", group[0].Effective_on) });
+                    }
+                }
+
+                //Delete Functionality pasupathi
+                if (EffectiveRateSheetDelete.Count > 0)
+                {
+                    foreach (var group in EffectiveRateSheetDelete)
+                    {
+                        Response res = UploadRatesheetEffectiveOnDelete(group, User, ServerRatesheetName, ServerRatesheetID, string.Format("{0:yyyy-MM-dd HH:mm:ss}", group[0].Effective_on), IpAddress, SessionID);
+                        response.Add(new SuccessResponse() { Message = res.Message, status = res.status, Value = string.Format("{0:yyyy-MM-dd HH:mm:ss}", group[0].Effective_on) });
+                    }
+                }
+
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                response.Add(new SuccessResponse() { Message = ex.Message, status = "failure" });
+                return response;
+            }
+        }
+
+        protected static string ConversiontoDummyNewNexege(List<RMSServices.RatesheetV2.ngt_rateslist> RateSheet)
+        {
+            List<NewNexegeRatesheetNewMapp> rateList = new List<NewNexegeRatesheetNewMapp>();
+            try
+            {
+                string OriginalName = DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                CsvFileName = OriginalName;
+                string files = "~/ratesheetFiles/" + OriginalName;
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        //foreach (var k in rmsContxt.specialcharconfigs.ToList())
+                        //{
+                        rateList.Add(new NewNexegeRatesheetNewMapp()
+                        {
+
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description,
+                            Rate = rate.Call_rate
+                            // ,Blocked = "ALLOWED"
+                            // ,startpulse = 0,
+                            //nextpulse = 0                
+                            // EffectiveDate = Convert.ToString(DateTime.Now.AddDays(-1))
+                        });
+                        // }
+                    }
+                }
+
+
+                RMSDTR.CreateCSVFromGenericList(rateList, filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+
+        protected static string ConversiontoDummyNewNexegeitel(List<RMSServices.RatesheetV2.ngt_rateslist> RateSheet)
+        {
+            List<NewNexegeRatesheetNewMappItel> rateList = new List<NewNexegeRatesheetNewMappItel>();
+            try
+            {
+                string OriginalName = DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                CsvFileName = OriginalName;
+                string files = "~/ratesheetFiles/" + OriginalName;
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        //foreach (var k in rmsContxt.specialcharconfigs.ToList())
+                        //{
+                        rateList.Add(new NewNexegeRatesheetNewMappItel()
+                        {
+
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description,
+                            Rate = rate.Call_rate
+                            // ,Blocked = "ALLOWED"
+                            // ,startpulse = 0,
+                            //nextpulse = 0                
+                            ,
+                            EffectiveDate = Convert.ToString(DateTime.Now.AddDays(-1))
+                        });
+                        // }
+                    }
+                }
+
+
+                RMSDTR.CreateCSVFromGenericList(rateList, filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+
+        protected static string ConversiontoDummyNewNexegeitelTermination(List<ngt_rateslist1> RateSheet)
+        {
+            List<NewNexegeRatesheetNewMappItelTerm> rateList = new List<NewNexegeRatesheetNewMappItelTerm>();
+            try
+            {
+                string OriginalName = DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                CsvFileName = OriginalName;
+                string files = "~/ratesheetFiles/" + OriginalName;
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        //foreach (var k in rmsContxt.specialcharconfigs.ToList())
+                        //{
+                        rateList.Add(new NewNexegeRatesheetNewMappItelTerm()
+                        {
+
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description,
+                            Rate = rate.Call_rate
+                             ,
+                            Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED",
+                            // ,
+                            Priority = rate.Grace_period,
+                            CLI = "TATA"
+                            //  ,
+                            // , EffectiveDate = Convert.ToString(DateTime.Now.AddDays(-1))
+                        });
+                        // }
+                    }
+                }
+
+
+                RMSDTR.CreateCSVFromGenericList(rateList, filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+
+        protected static string ConversiontoDummyNewNexegeitelUpdate(List<ngt_rateslist1> RateSheet)
+        {
+            List<NewNexegeRatesheetNewMappItelUpdate> rateList = new List<NewNexegeRatesheetNewMappItelUpdate>();
+            try
+            {
+                string OriginalName = DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                CsvFileName = OriginalName;
+                string files = "~/ratesheetFiles/" + OriginalName;
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        //foreach (var k in rmsContxt.specialcharconfigs.ToList())
+                        //{
+                        rateList.Add(new NewNexegeRatesheetNewMappItelUpdate()
+                        {
+
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description,
+                            Rate = rate.Call_rate,
+
+                            Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED"
+                            // ,startpulse = 0,
+                            //nextpulse = 0                
+
+                            //  ,EffectiveDate = Convert.ToString(DateTime.Now.ToString("dd-MM-yyyy"))
+                        });
+                        // }
+                    }
+                }
+
+
+                RMSDTR.CreateCSVFromGenericList(rateList, filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+        protected static string ConversiontoDummyNewNexegeTermination(List<RMSServices.RatesheetV2.ngt_rateslist> RateSheet)
+        {
+            List<NewNexegeRatesheetNewMappTerm> rateList = new List<NewNexegeRatesheetNewMappTerm>();
+            try
+            {
+                string OriginalName = DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                CsvFileName = OriginalName;
+                string files = "~/ratesheetFiles/" + OriginalName;
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+
+                        rateList.Add(new NewNexegeRatesheetNewMappTerm()
+                        {
+
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description.Replace("proper", ""),
+                            Rate = rate.Call_rate,
+                            Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED",
+                            Priority = rate.Grace_period,
+                            CLI = "TATA"
+
+                        });
+
+                    }
+                }
+
+
+                RMSDTR.CreateCSVFromGenericList(rateList, filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+
+
+        protected static string ConversiontoNewNexege(List<ngt_rateslist1> RateSheet)
+        {
+            List<NewNexegeRatesheet> rateList = new List<NewNexegeRatesheet>();
+            try
+            {
+                string files = "~/ratesheetFiles/" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        using (rmsEntities rmsContxt = new rmsEntities())
+                        {
+                            foreach (var k in rmsContxt.specialcharconfigs.ToList())
+                            {
+                                rateList.Add(new NewNexegeRatesheet() { Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED", Country_Name = rate.Description.Replace(k.Char, k.Replace), Country_Prefix = rate.ngt_regionName, Rate = rate.Call_rate, Start_Pulse = rate.Start_Pulse, Next_Pulse = rate.Next_Pulse });
+                            }
+                        }
+                    }
+                }
+                var rateList1 = rateList.Distinct();
+                // RMSDTR.CreateCSVFromGenericList(rateList1, filename);
+                CommonFunctions.ToCSV(rateList1.ToList(), filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+
+        // Old code Pasupathi commeneted
+        protected static string ConversiontoNewNexegeNew(List<ngt_rateslist1> RateSheet)
+        {
+            List<NewNexegeRatesheetNewUpdate> rateList = new List<NewNexegeRatesheetNewUpdate>();
+            try
+            {
+                string files = "~/ratesheetFiles/" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        rateList.Add(new NewNexegeRatesheetNewUpdate()
+                        {
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description,
+
+                            Rate = rate.Call_rate
+                            ,
+                            Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED"
+
+                        });
+
+                    }
+                }
+                var rateList1 = rateList.Distinct();
+
+                CommonFunctions.ToCSVNexge(rateList1.ToList(), filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+
+        protected static string ConversiontoNewNexegeNewTerminationUpdate(List<ngt_rateslist1> RateSheet)
+        {
+            List<NewNexegeRatesheetNewUpdateTerm> rateList = new List<NewNexegeRatesheetNewUpdateTerm>();
+            try
+            {
+                string files = "~/ratesheetFiles/" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        rateList.Add(new NewNexegeRatesheetNewUpdateTerm()
+                        {
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description,
+
+                            Rate = rate.Call_rate
+                            ,
+                            Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED"
+                            ,
+
+                            Priority = rate.Grace_period
+                            ,
+                            CLI = "TATA"
+
+                        });
+
+                    }
+                }
+                var rateList1 = rateList.Distinct();
+                // RMSDTR.CreateCSVFromGenericList(rateList1, filename);
+                // CommonFunctions.ToCSV(rateList1.ToList(), filename);
+                CommonFunctions.ToCSVNexge(rateList1.ToList(), filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+
+        protected static string ConversiontoNewNexegecallcentreNewTerminationUpdate(List<ngt_rateslist1> RateSheet)
+        {
+            List<NewNexegecallcentreRatesheetNewUpdateTerm> rateList = new List<NewNexegecallcentreRatesheetNewUpdateTerm>();
+            try
+            {
+                string files = "~/ratesheetFiles/" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        rateList.Add(new NewNexegecallcentreRatesheetNewUpdateTerm()
+                        {
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description,
+
+                            Rate = rate.Call_rate
+                            ,
+                            Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED"
+                            ,
+                            ProfitChecking = "FALSE"
+                            ,
+
+                            Priority = rate.Grace_period
+                            ,
+                            CLI = "TATA"
+                            //    ,
+                            //    pulseId = 2
+
+                            //      ,
+                            //    startpulse = rate.Start_Pulse,
+                            //    nextpulse = rate.Next_Pulse
+                            //    ,
+                            //    EffectiveDate = Convert.ToString(rate.Effective_on)
+                            //});
+
+
+                            // Pasupathi commenetd Old code
+
+                            //rateList.Add(new NewNexegeRatesheetNewUpdate()
+                            //{
+                            //    Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED",
+                            //    Country_Name = rate.Description,
+                            //    Country_Prefix = rate.ngt_regionName,
+                            //    Rate = rate.Call_rate,
+                            //    startpulse = rate.Start_Pulse,
+                            //    nextpulse = rate.Next_Pulse,
+                            //    EffectiveDate = Convert.ToString(rate.Effective_on)
+                        });
+
+                    }
+                }
+                var rateList1 = rateList.Distinct();
+                // RMSDTR.CreateCSVFromGenericList(rateList1, filename);
+                // CommonFunctions.ToCSV(rateList1.ToList(), filename);
+                CommonFunctions.ToCSVNexge(rateList1.ToList(), filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+
+        protected static string ConversiontoNewNexegecallcentreNewOriginationUpdate(List<ngt_rateslist1> RateSheet)
+        {
+            List<NewNexegecallcentreRatesheetNewUpdateOrig> rateList = new List<NewNexegecallcentreRatesheetNewUpdateOrig>();
+            try
+            {
+                string files = "~/ratesheetFiles/" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        rateList.Add(new NewNexegecallcentreRatesheetNewUpdateOrig()
+                        {
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description,
+
+                            Rate = rate.Call_rate
+                            ,
+                            Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED"
+                            ,
+                            ProfitChecking = "FALSE"
+
+                        });
+
+                    }
+                }
+                var rateList1 = rateList.Distinct();
+                // RMSDTR.CreateCSVFromGenericList(rateList1, filename);
+                // CommonFunctions.ToCSV(rateList1.ToList(), filename);
+                CommonFunctions.ToCSVNexge(rateList1.ToList(), filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+
+        public static SuccessResponse NewNexgeUpload(string Ipaddress, string Description, string UserName, string Password, string actiontype, string ServerRatesheetName, string ServerRatesheetID, string pulse, bool? status, int? gracePeriod, bool useFortrm, List<RMSServices.RatesheetV2.ngt_rateslist> RatesheetData)
+        {
+            SuccessResponse res = new SuccessResponse();
+            List<SuccessResponse> Res = new List<SuccessResponse>();
+            string SessionId = AuthicateoldLogin(Ipaddress, UserName, Password);
+            if (SessionId != "")
+            {
+                Res = UploadRates(RatesheetData, Description, useFortrm, pulse, gracePeriod, UserName, ServerRatesheetName, ServerRatesheetID, Ipaddress, SessionId);
+                int count = 0;
+                res.status = "success";
+                foreach (var r in Res)
+                {
+                    count++;
+                    if (r.status == "success Ratesheet")
+                    {
+                        res.Value = r.Message;
+                    }
+                    res.Message += count + "). Status: " + r.status + " Message: " + r.Message + " Date: " + r.Value;
+                }
+
+                res.Value = ServerRatesheetName;
+                return res;
+            }
+            else
+            {
+                res.status = "failure";
+                res.Message = "Login Failed";
+            }
+
+            return res;
+        }
+
+
+        // Pasdupathi created New Method
+
+
+        public static SuccessResponse NewNexgeUploadNew(string Ipaddress, string Description, string UserName, string Password, string actiontype, string ServerRatesheetName, string ServerRatesheetID, string pulse, bool? status, int? gracePeriod, bool useFortrm, List<RMSServices.RatesheetV2.ngt_rateslist> RatesheetData, int RatesheetId)
+        {
+            string SessionId = "";
+            SuccessResponse res = new SuccessResponse();
+            List<SuccessResponse> Res = new List<SuccessResponse>();
+            //if (Ipaddress == ConfigurationManager.AppSettings["Telservnet2"].ToString())
+            //    SessionId = AuthicateoldLoginPush(Ipaddress, UserName, Password);
+            //else
+            SessionId = AuthicateoldLogin(Ipaddress, UserName, Password);
+
+            if (SessionId != "")
+            {
+                Res = NewUploadRates(RatesheetData, Description, useFortrm, pulse, gracePeriod, UserName, ServerRatesheetName, ServerRatesheetID, Ipaddress, SessionId, actiontype, Password, RatesheetId);
+                int count = 0;
+                // res.status = "success";
+                res.status = Res[0].status;
+
+                foreach (var r in Res)
+                {
+                    count++;
+                    if (r.status == "success Ratesheet")
+                    {
+                        res.Value = r.Message;
+                    }
+                    res.Message += count + "). Status: " + r.status + " Message: " + r.Message + " Date: " + r.Value;
+                    res.status = r.status;
+                }
+
+                res.Value = ServerRatesheetName;
+                return res;
+            }
+            else
+            {
+                UpdateError("NewNexge NewNexgeUploadNew Login Failed..", RatesheetId.ToString(), "RatesheetLogs.txt", " Ratesheet Name:" + ServerRatesheetName + " Server Ratesheet Name: " + ServerRatesheetName + " SessionID:" + SessionId, false);
+                res.status = "failure";
+                res.Message = "Login Failed";
+            }
+
+            return res;
+        }
+
+
+        public static SuccessResponse NewNexgeReplaceNew(string Ipaddress, string Description, string UserName, string Password, string actiontype, string ServerRatesheetName, string ServerRatesheetID, string pulse, bool? status, int? gracePeriod, bool useFortrm, List<RMSServices.RatesheetV2.ngt_rateslist> RatesheetData)
+        {
+            SuccessResponse res = new SuccessResponse();
+            List<SuccessResponse> Res = new List<SuccessResponse>();
+            string SessionId = AuthicateoldLogin(Ipaddress, UserName, Password);
+            if (SessionId != "")
+            {
+               
+
+                Res = NewReplaceRates(RatesheetData, Description, useFortrm, pulse, gracePeriod, UserName, ServerRatesheetName, ServerRatesheetID, Ipaddress, SessionId, actiontype, Password);
+                int count = 0;
+                res.status = "success";
+
+                foreach (var r in Res)
+                {
+                    count++;
+                    if (r.status == "success Ratesheet")
+                    {
+                        res.Value = r.Message;
+                    }
+                    res.Message += count + "). Status: " + r.status + " Message: " + r.Message + " Date: " + r.Value;
+                }
+
+                res.Value = ServerRatesheetName;
+                return res;
+            }
+            else
+            {
+                res.status = "failure";
+                res.Message = "Login Failed";
+            }
+
+            return res;
+        }
+
+
+        public static SuccessResponse NewNexgeMapping(string Ipaddress, string Description, string UserName, string Password, string actiontype, string ServerRatesheetName, string ServerRatesheetID, string pulse, bool? status, int? gracePeriod, bool useFortrm, List<RMSServices.RatesheetV2.ngt_rateslist> RatesheetData, int RatesheetId)
+        {
+            string ip = Ipaddress.Split(':')[0].ToString();
+            //  byte[] DatanewNexge = null;
+            // byte[] DatanewNexgeTerm = null;
+            //if (useFortrm == false)
+            //{
+            string newNexgeSampleFilePath = ConversiontoDummyNewNexege(RatesheetData);
+
+            FileStream fsnewnexge = new FileStream(newNexgeSampleFilePath, FileMode.Open, FileAccess.Read);
+            byte[] DatanewNexge = new byte[fsnewnexge.Length];
+            fsnewnexge.Read(DatanewNexge, 0, DatanewNexge.Length);
+            fsnewnexge.Close();
+
+            string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitel(RatesheetData);
+
+            FileStream fsnewnexgeItel = new FileStream(newNexgeSampleFilePathItel, FileMode.Open, FileAccess.Read);
+            byte[] DatanewNexgeItel = new byte[fsnewnexgeItel.Length];
+            fsnewnexgeItel.Read(DatanewNexgeItel, 0, DatanewNexgeItel.Length);
+            fsnewnexgeItel.Close();
+
+
+
+
+            //}
+            //else
+            //{
+            //    string newNexgeSampleFilePathTerm = ConversiontoDummyNewNexegeTermination(RatesheetData);
+
+            //    FileStream fsnewnexgeTerm = new FileStream(newNexgeSampleFilePathTerm, FileMode.Open, FileAccess.Read);
+            //    DatanewNexgeTerm = new byte[fsnewnexgeTerm.Length];
+            //    fsnewnexgeTerm.Read(DatanewNexgeTerm, 0, DatanewNexgeTerm.Length);
+            //    fsnewnexgeTerm.Close();
+            //}
+
+
+
+            SuccessResponse res = new SuccessResponse();
+            try
+            {
+                string SessionId = "";
+                if (Ipaddress == ConfigurationManager.AppSettings["NewNexgeIp"].ToString() || Ipaddress == ConfigurationManager.AppSettings["NewNexgeIp1"].ToString())
+                    SessionId = AuthicateoldLoginGulf(ip, UserName, Password);
+                else
+                    SessionId = AuthicateoldLoginPush(ip, UserName, Password);
+
+                UpdateError("NewNexge Ratesheet Session Response", SessionId, "RatesheetLogs.txt", "", false);
+                RestClient restClient1 = new RestClient();
+                restClient1.CookieContainer = new CookieContainer();
+
+                // Url1
+                string URI = "http://" + ip + "/admin";
+
+                RestRequest wc = new RestRequest(URI, Method.GET);
+                wc.AddHeader("Accept", "text / html,application / xhtml + xml,application / xml; q = 0.9,*/*;q=0.8");
+                wc.AddHeader("Accept-Encoding", "gzip, deflate");
+                wc.AddHeader("Accept-Language", "en-US,en;q=0.5");
+                wc.AddHeader("Cookie", "JSESSIONID=" + SessionId);
+                wc.AddHeader("Host", ip);
+                wc.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0");
+                wc.AddCookie("JSESSIONID", SessionId);
+                wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
+                restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
+
+                ServicePointManager.ServerCertificateValidationCallback =
+                delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+                { return true; };
+
+                IRestResponse response1 = restClient1.Execute(wc);
+
+
+                // Url1
+                string URI1 = "http://" + ip + "/billing/billing-plan";
+
+                wc = new RestRequest(URI1, Method.GET);
+                wc.AddHeader("Accept", "text / html, application / xhtml + xml, application / xml; q = 0.9,*/*;q=0.8");
+                wc.AddHeader("Accept-Encoding", "gzip, deflate");
+                wc.AddHeader("Accept-Language", "en-US,en;q=0.5");
+                wc.AddHeader("Cookie", "JSESSIONID=" + SessionId);
+                wc.AddHeader("Host", ip);
+                wc.AddHeader("Referer", "http://" + ip + "/admin");
+                wc.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0");
+                wc.AddHeader("Content-Type", "application/x-www-form-urlencoded");
+                wc.AddCookie("JSESSIONID", SessionId);
+                wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
+                restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
+
+                ServicePointManager.ServerCertificateValidationCallback =
+                delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+                { return true; };
+
+                response1 = restClient1.Execute(wc);
+
+
+                string URI2 = "http://" + ip + "/billing/fileupload?actionId=saveBillingPlan";
+                wc = new RestRequest(URI2, Method.POST);
+                wc.AddHeader("Accept", "text / html, application / xhtml + xml, application / xml; q = 0.9,*/*;q=0.8");
+                wc.AddHeader("Accept-Encoding", "gzip, deflate");
+                wc.AddHeader("Accept-Language", "en-US,en;q=0.5");
+                wc.AddHeader("Cookie", "JSESSIONID=" + SessionId);
+                wc.AddHeader("Host", ip);
+                wc.AddHeader("Referer", "http://" + ip + "/billing/billing-plan");
+                wc.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0");
+                wc.AddHeader("Content-Type", "application/x-www-form-urlencoded");
+                wc.AddCookie("JSESSIONID", SessionId);
+
+                // Termination
+                if (useFortrm == true)
+                {
+
+                    // string newNexgeSampleFilePathTerm = ConversiontoDummyNewNexegeTermination(RatesheetData);
+                    string files = "~/ratesheetFiles/CostSheetPrefixAsTR.csv";
+                    string newNexgeSampleFilePathTerm = HostingEnvironment.MapPath(files);
+
+                    FileStream fsnewnexgeTerm = new FileStream(newNexgeSampleFilePathTerm, FileMode.Open, FileAccess.Read);
+                    byte[] DatanewNexgeTerm = new byte[fsnewnexgeTerm.Length];
+                    fsnewnexgeTerm.Read(DatanewNexgeTerm, 0, DatanewNexgeTerm.Length);
+                    fsnewnexgeTerm.Close();
+
+                    // wc.AddParameter("actionId", "saveBillingPlan");
+                    wc.AddParameter("bpCode", "NULL");
+                    wc.AddParameter("currencyType", "USD");
+                    wc.AddParameter("useForTr", "true");//true/false);
+                    wc.AddParameter("useForOr", "false");//true/false);
+                    wc.AddParameter("action_uri", "billingPlan");
+                    wc.AddParameter("calendarType", "day");
+                    wc.AddParameter("calendarValue", "1-7");
+                    wc.AddParameter("decimalDigits", "6");
+                    wc.AddParameter("bpSeqNo", "-1");
+                    wc.AddParameter("startPulse1", "1");
+                    wc.AddParameter("nextPulse1", "1");
+                    wc.AddParameter("addressRuleId", "-1");
+                    wc.AddParameter("retainOtherOldDestinations1", "true");
+                    wc.AddParameter("enableProfitRouting", "true");
+                    wc.AddParameter("loggedInUser", "admin"); //admin);
+                    wc.AddParameter("bpStatus", "true");
+                    wc.AddParameter("externalGatewayCLI", "false");
+                    wc.AddParameter("profitChecking1", "true");
+                    wc.AddParameter("fileType", ".csv");
+                    wc.AddParameter("rateSheetWithPulse", "false");
+                    wc.AddParameter("isTermination", "false");
+                    wc.AddParameter("isenableProfitCheck", "false");
+                    wc.AddParameter("isSheetWithPulse", "false");
+                    wc.AddParameter("rowNumber", "1");
+                    // wc.AddParameter("planUsage", "Termination");
+                    wc.AddParameter("bpName", ServerRatesheetName);//AirtelIncoming);  
+                    wc.AddParameter("owner", "admin");//admin);                      
+                    wc.AddParameter("pulse", "1/1");
+                    wc.AddParameter("gracePeriod1", "6");
+                    wc.AddParameter("tempplanTypeCode_1", "1");
+                    //  wc.AddFile("ratesheet1", DatanewNexgeTerm, ServerRatesheetName);
+                    if (Ipaddress == ConfigurationManager.AppSettings["NewNexgeIpRatesheetItel"].ToString())
+                    {
+                        // string newNexgeSampleFilePathItelTerm = ConversiontoDummyNewNexegeitelTermination(RatesheetData);
+
+                        string filesterm = "~/ratesheetFiles/CostSheetPrefixAsTRWithDate.csv";
+                        string newNexgeSampleFilePathItelTerm = HostingEnvironment.MapPath(filesterm);
+
+                        FileStream fsnewnexgeItelTerm = new FileStream(newNexgeSampleFilePathItelTerm, FileMode.Open, FileAccess.Read);
+                        byte[] DatanewNexgeItelTerm = new byte[fsnewnexgeItelTerm.Length];
+                        fsnewnexgeItelTerm.Read(DatanewNexgeItelTerm, 0, DatanewNexgeItelTerm.Length);
+                        fsnewnexgeItelTerm.Close();
+
+                        wc.AddFile("ratesheet1", DatanewNexgeItelTerm, ServerRatesheetName);
+                    }
+                    else
+                        wc.AddFile("ratesheet1", DatanewNexgeTerm, ServerRatesheetName);
+
+                }
+                // Origination
+                else
+                {
+
+                    wc.AddParameter("actionId", "saveBillingPlan");
+                    wc.AddParameter("bpCode", "NULL");
+                    wc.AddParameter("currencyType", "USD");
+                    wc.AddParameter("useForTr", "false");//true/false);
+                    wc.AddParameter("useForOr", "true");//true/false);
+                    wc.AddParameter("action_uri", "billingPlan");
+                    wc.AddParameter("calendarType", "day");
+                    wc.AddParameter("calendarValue", "1-7");
+                    wc.AddParameter("decimalDigits", "6");
+                    wc.AddParameter("bpSeqNo", "-1");
+                    wc.AddParameter("startPulse1", "1");
+                    wc.AddParameter("nextPulse1", "1");
+                    wc.AddParameter("addressRuleId", "-1");
+                    wc.AddParameter("retainOtherOldDestinations1", "true");
+                    wc.AddParameter("enableProfitRouting", "true");
+                    wc.AddParameter("loggedInUser", "admin"); //admin);
+                    wc.AddParameter("bpStatus", "true");
+                    wc.AddParameter("externalGatewayCLI", "false");
+                    wc.AddParameter("profitChecking1", "true");
+                    wc.AddParameter("fileType", ".csv");
+                    wc.AddParameter("rateSheetWithPulse", "false");
+                    wc.AddParameter("isTermination", "false");
+                    wc.AddParameter("isenableProfitCheck", "false");
+                    wc.AddParameter("isSheetWithPulse", "false");
+                    wc.AddParameter("rowNumber", "1");
+                    // wc.AddParameter("planUsage", "Termination");
+                    wc.AddParameter("bpName", ServerRatesheetName);//AirtelIncoming);  
+                    wc.AddParameter("owner", "admin");//admin);                      
+                    wc.AddParameter("pulse", "1/1");
+                    wc.AddParameter("gracePeriod1", "0");
+                    wc.AddParameter("tempplanTypeCode_1", "1");
+                    //if (useFortrm == true)
+                    //    wc.AddFile("ratesheet1", DatanewNexgeTerm, ServerRatesheetName);
+                    //else
+                    if (Ipaddress == ConfigurationManager.AppSettings["NewNexgeIpRatesheetItel"].ToString())
+                        wc.AddFile("ratesheet1", DatanewNexgeItel, ServerRatesheetName);
+                    else
+                        wc.AddFile("ratesheet1", DatanewNexge, ServerRatesheetName);
+                }
+
+                wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
+                restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
+
+                ServicePointManager.ServerCertificateValidationCallback =
+               delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+               { return true; };
+
+                response1 = restClient1.Execute(wc);
+
+                UpdateError("NewNexge Ratesheet Response", response1.Content, "RatesheetLogs.txt", newNexgeSampleFilePath, false);
+
+                if ((response1.Content.Contains("success") &&
+                    response1.Content.Contains("1000") && response1.Content.Contains(ServerRatesheetName)))
+                {
+
+                    string billplanID = response1.Content.Split(':')[3].Split(',')[0].TrimStart('"').TrimEnd('"').ToString();
+
+                    //res = NewNexgeUploadNew(Ipaddress, Description, UserName, Password, "Update", ServerRatesheetName, billplanID, pulse, status, gracePeriod, useFortrm, RatesheetData);
+
+                    if (useFortrm == true)
+                    {
+                        res = NewNexgeUploadNew(Ipaddress, Description, UserName, Password, "Update", ServerRatesheetName, billplanID, pulse, status, gracePeriod, useFortrm, RatesheetData, RatesheetId);
+                    }
+
+
+                    res.Value = billplanID;
+                    res.status = "success";
+                    res.Message = response1.Content.ToString();
+                }
+                else if ((response1.Content.Contains("Billing Plan already exists")))
+                {
+                    UpdateError("NewNexge Ratesheet Response", response1.Content, "RatesheetLogs.txt", newNexgeSampleFilePath, false);
+
+                    dynamic OldNexgeMap = null;
+                    using (rmsEntities rms = new rmsEntities())
+                    {
+                        var serverdetails = rms.server_details.Where(s => s.ServerIp == Ipaddress && s.Username == UserName).FirstOrDefault();
+
+                        UpdateError("NewNexge OldNexgeMap Id Getting..", serverdetails.ServerID.ToString(), "RatesheetLogs.txt", "", false);
+
+                        OldNexgeMap = rms.oldnexgeserverratesheetmaps.Where(o => o.ServerRatesheetName == ServerRatesheetName && o.ServerId == serverdetails.ServerID).FirstOrDefault();
+                        if (OldNexgeMap == null)
+                            UpdateError("NewNexge OldBilling Plan ID", serverdetails.ServerID.ToString(), "RatesheetLogs.txt", "Old Nexge Map is null", false);
+                        else
+                            UpdateError("NewNexge OldBilling Plan ID", serverdetails.ServerID.ToString(), "RatesheetLogs.txt", OldNexgeMap.ServerRatesheetId, false);
+
+                    }
+                    if (OldNexgeMap != null)
+                    {
+
+                        UpdateError("NewNexge OldNexgeMap Id Getting..", newNexgeSampleFilePath, "RatesheetLogs.txt", OldNexgeMap.ServerRatesheetId.ToString(), false);
+
+                        res = NewNexgeUploadNew(Ipaddress, Description, UserName, Password, "Update", ServerRatesheetName, OldNexgeMap.ServerRatesheetId, pulse, status, gracePeriod, useFortrm, RatesheetData, RatesheetId);
+                        res.Value = OldNexgeMap.ServerRatesheetId;
+                        res.status = "success";
+                        res.Message = response1.Content.ToString();
+                    }
+                    else
+                    {
+                        UpdateError("NewNexge Ratesheet Response Bill Plan Exist", "No ServerRatesheet Details Exist in Our Database in this Server ratesheet name. Table:oldnexgeserverratesheetmap  ", "RatesheetLogs.txt", ServerRatesheetName, false);
+
+                        res.Value = "0";
+                        res.status = "failure";
+                        res.Message = response1.Content.ToString();
+                    }
+
+                }
+                else
+                {
+                    res.status = "failure";
+                    res.Message = response1.Content.ToString();
+
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateError("NewNexge OldNexgeMap Id Getting..", ex.Message, "RatesheetLogs.txt", "", false);
+
+                res.status = "failure";
+                res.Message = ex.Message;
+            }
+            return res;
+        }
+        public static SuccessResponse NewNexgeUploadDelete(string Ipaddress, string Description, string UserName, string Password, string actiontype, string ServerRatesheetName, string ServerRatesheetID, string pulse, bool? status, int? gracePeriod, bool useFortrm, List<RMSServices.RatesheetV2.ngt_rateslist> RatesheetData, List<RMSServices.RatesheetV2.ngt_rateslist> RatesheetDataDelete)
+        {
+            SuccessResponse res = new SuccessResponse();
+            List<SuccessResponse> Res = new List<SuccessResponse>();
+            string SessionId = AuthicateoldLogin(Ipaddress, UserName, Password);
+            if (SessionId != "")
+            {
+                Res = UploadRatesDelete(RatesheetData, RatesheetDataDelete, Description, useFortrm, pulse, gracePeriod, UserName, ServerRatesheetName, ServerRatesheetID, Ipaddress, SessionId);
+                int count = 0;
+                res.status = "success";
+                foreach (var r in Res)
+                {
+                    count++;
+                    if (r.status == "success Ratesheet")
+                    {
+                        res.Value = r.Message;
+                    }
+                    res.Message += count + "). Status: " + r.status + " Message: " + r.Message + " Date: " + r.Value;
+                }
+
+                res.Value = ServerRatesheetName;
+                return res;
+            }
+            else
+            {
+                res.status = "failure";
+                res.Message = "Login Failed";
+            }
+
+            return res;
+        }
+
+        public class loginResult
+        {
+            public string status { get; set; }
+            public string message { get; set; }
+            public string LoggedInGroup { get; set; }
+            public string LoggedInUser { get; set; }
+            public string Owner { get; set; }
+            public string SipDomain { get; set; }
+            public string BillingPlan { get; set; }
+            public string ResellerType { get; set; }
+            public string JSessionId { get; set; }
+        }
+
+        private class NewNexegeRatesheet
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+            public string Blocked { get; set; }
+            public int Start_Pulse { get; set; }
+            public int Next_Pulse { get; set; }
+
+        }
+        private class NewNexegeRatesheetNew
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+            public string Blocked { get; set; }
+            public int startpulse { get; set; }
+            public int nextpulse { get; set; }
+            public string EffectiveDate { get; set; }
+        }
+
+        // Pasupathi created
+        private class NewNexegeRatesheetNewUpdate
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+            public string Blocked { get; set; }
+
+            //public int pulseId { get; set; }
+
+            //public int startpulse { get; set; }
+            //public int nextpulse { get; set; }
+            //public string EffectiveDate { get; set; }
+        }
+
+        private class NewNexegeRatesheetNewUpdateTerm
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+            public string Blocked { get; set; }
+
+
+            public int Priority { get; set; }
+            public string CLI { get; set; }
+
+            //public int pulseId { get; set; }
+
+            //public int startpulse { get; set; }
+            //public int nextpulse { get; set; }
+            //public string EffectiveDate { get; set; }
+        }
+
+        private class NewNexegecallcentreRatesheetNewUpdateTerm
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+            public string Blocked { get; set; }
+
+            public string ProfitChecking { get; set; }
+            public int Priority { get; set; }
+            public string CLI { get; set; }
+
+            //public int pulseId { get; set; }
+
+            //public int startpulse { get; set; }
+            //public int nextpulse { get; set; }
+            //public string EffectiveDate { get; set; }
+        }
+
+        private class NewNexegecallcentreRatesheetNewUpdateOrig
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+            public string Blocked { get; set; }
+
+            public string ProfitChecking { get; set; }
+
+
+        }
+        private class NewNexegeRatesheetNewMapp
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+
+            // public string Blocked { get; set; }
+
+            //   public int startpulse { get; set; }
+            // public int nextpulse { get; set; }
+            // public string EffectiveDate { get; set; }
+
+        }
+        private class NewNexegeRatesheetNewMappItel
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+
+            // public string Blocked { get; set; }
+
+            //   public int startpulse { get; set; }
+            // public int nextpulse { get; set; }
+            public string EffectiveDate { get; set; }
+
+        }
+        private class NewNexegeRatesheetNewMappItelTerm
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+
+            public string Blocked { get; set; }
+
+            public int Priority { get; set; }
+            public string CLI { get; set; }
+            // public string EffectiveDate { get; set; }
+
+        }
+        private class NewNexegeRatesheetNewMappItelUpdate
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+
+            public string Blocked { get; set; }
+
+            //   public int startpulse { get; set; }
+            // public int nextpulse { get; set; }
+            //  public string EffectiveDate { get; set; }
+
+        }
+
+        private class NewNexegeRatesheetNewMappTerm
+        {
+
+            public string Country_Prefix { get; set; }
+
+            public string Country_Name { get; set; }
+
+            public decimal Rate { get; set; }
+
+            public string Blocked { get; set; }
+
+            public int Priority { get; set; }
+
+            public string CLI { get; set; }
+
+
+
+            //   public int startpulse { get; set; }
+            // public int nextpulse { get; set; }
+            //  public string EffectiveDate { get; set; }
+
+        }
+        /*=============================================NexgeRatePushByPulseRule Start==============================================================*/
+
+        public static Response UploadRatesheetNowAdvanced(List<ngt_rateslist1> RateSheet, string Description, bool usefortrm, string Pulse, int? GracePeriod, string User, string ServerRatesheetName, string ServerRatesheetID, string ip, string sessionID)
+        {
+            string[] ipadd = ip.Split(':');
+            Response result = new Response();
+            string[] Pulses = Pulse.Split('/');
+            string fileName = "";// ConversiontoNewNexege(RateSheet);
+            try
+            {
+                string ss = string.Empty;
+                using (rmsEntities rms = new rmsEntities())
+                {
+                    jobqueue hh = rms.jobqueues.Where(d => d.JobStatus.Equals("Progress")).FirstOrDefault();
+                    if (hh != null)
+                        ss = hh.RequestType;
+                }
+
+                if (ss == "Update")
+                {
+                    fileName = ConversiontoNewNexegeNew(RateSheet);
+                    NameValueCollection nvc1 = new NameValueCollection();
+                    nvc1.Add("bpCode", ServerRatesheetName);
+                    nvc1.Add("bpName", ServerRatesheetName);
+                    nvc1.Add("loggedInUser", User);
+                    nvc1.Add("bpStatus", "true");
+                    nvc1.Add("useForTr", "false");
+                    nvc1.Add("enableProfitRouting", "false");
+                    nvc1.Add("externalGatewayCLI", "false");
+                    nvc1.Add("decimalDigits", "6");
+                    nvc1.Add("bpSeqNo", "-1");
+                    nvc1.Add("owner", User);
+                    nvc1.Add("currencyType", "USD");
+                    nvc1.Add("calendarType", "day");
+                    nvc1.Add("calendarValue", "1-7");
+                    nvc1.Add("descriptionVar", ServerRatesheetName);
+                    nvc1.Add("profitChecking1", "false");
+                    nvc1.Add("retainOtherOldDestinations1", "true");
+                    nvc1.Add("prefix1", "NULL");
+                    string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan", fileName, "ratesheet1", "application/octet-stream", nvc1, sessionID);
+                }
+                else if (ss == "Replace")
+                {
+                    fileName = ConversiontoNewNexegeNew(RateSheet);
+                    NameValueCollection nvc1 = new NameValueCollection();
+                    nvc1.Add("bpCode", ServerRatesheetName);
+                    nvc1.Add("bpName", ServerRatesheetName);
+                    nvc1.Add("loggedInUser", User);
+                    nvc1.Add("bpStatus", "true");
+                    nvc1.Add("useForTr", "false");
+                    nvc1.Add("enableProfitRouting", "false");
+                    nvc1.Add("externalGatewayCLI", "false");
+                    nvc1.Add("decimalDigits", "6");
+                    nvc1.Add("bpSeqNo", "-1");
+                    nvc1.Add("owner", User);
+                    nvc1.Add("currencyType", "USD");
+                    nvc1.Add("calendarType", "day");
+                    nvc1.Add("calendarValue", "1-7");
+                    nvc1.Add("descriptionVar", ServerRatesheetName);
+                    nvc1.Add("profitChecking1", "false");
+                    nvc1.Add("retainOtherOldDestinations1", "false");
+                    nvc1.Add("prefix1", "NULL");
+                    string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan", fileName, "ratesheet1", "application/octet-stream", nvc1, sessionID);
+
+                }
+
+                else
+                {
+
+                    fileName = ConversiontoNewNexegeNew(RateSheet);
+                    NameValueCollection nvc1 = new NameValueCollection();
+                    nvc1.Add("bpCode", "NULL");
+                    nvc1.Add("bpName", ServerRatesheetName);
+                    nvc1.Add("loggedInUser", User);
+                    nvc1.Add("bpStatus", "true");
+                    nvc1.Add("useForTr", "false");
+                    nvc1.Add("enableProfitRouting", "false");
+                    nvc1.Add("externalGatewayCLI", "false");
+                    nvc1.Add("decimalDigits", "6");
+                    nvc1.Add("bpSeqNo", "-1");
+                    nvc1.Add("owner", User);
+                    nvc1.Add("currencyType", "USD");
+                    nvc1.Add("calendarType", "day");
+                    nvc1.Add("calendarValue", "1-7");
+                    nvc1.Add("descriptionVar", ServerRatesheetName);
+                    nvc1.Add("profitChecking1", "false");
+                    nvc1.Add("retainOtherOldDestinations1", "false");
+                    nvc1.Add("prefix1", "NULL");
+                    string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan", fileName, "ratesheet1", "application/octet-stream", nvc1, sessionID);
+
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.status = "failure";
+                result.Message = ex.Message;
+                return result;
+            }
+            //-----------------------------------------old----------------------
+            //string[] ipadd = ip.Split(':');
+            //Response result = new Response();
+            //string[] Pulses = Pulse.Split('/');
+            //string fileName = ConversiontoNewNexege(RateSheet);
+            //try
+            //{
+
+            //    NameValueCollection nvc = new NameValueCollection();
+            //    nvc.Add("actionId", "upload");
+            //    nvc.Add("fileName", fileName);
+
+            //    string[] Response = resolvehtml(HttpUploadFileAdvanced("http://" + ip + "/admin/billingadmin/UploadAdvancedAddressFile.jsp?actionId=upload&fileName=" + fileName, fileName, "ratesheet", "text/csv", nvc, sessionID));
+
+            //    if (Response[0].ToLower() == "success")
+            //    {
+            //        string CreateAdvancedPlanUurl = String.Format(ConfigurationManager.AppSettings["CreateAdvancedPlan"].ToString(), ip, ServerRatesheetName, User, usefortrm, "true", "USD");
+            //        string CrstResult = CreateAdvancedPlanRate(CreateAdvancedPlanUurl, sessionID);
+            //        dynamic returnRes = JsonConvert.DeserializeObject(CrstResult);
+            //    }
+
+            //    return result;
+
+
+            //}
+            //catch (Exception ex)
+            //{
+            //    result.status = "failure";
+            //    result.Message = ex.Message;
+            //    return result;
+            //}
+        }
+
+        // // Pasupathi created new method
+        public static Response NewUploadRatesheetNowAdvanced(List<ngt_rateslist1> RateSheet, string Description, bool usefortrm, string Pulse, int? GracePeriod, string User, string ServerRatesheetName, string ServerRatesheetID, string ip, string sessionID, string actiontype)
+        {
+            string[] ipadd = ip.Split(':');
+            Response result = new Response();
+            string[] Pulses = Pulse.Split('/');
+            string fileName = "";// ConversiontoNewNexege(RateSheet);
+            try
+            {
+                string ss = actiontype;
+                //using (rmsEntities rms = new rmsEntities())
+                //{
+                //    jobqueue hh = rms.jobqueues.Where(d => d.JobStatus.Equals("Progress")).FirstOrDefault();
+                //    if (hh != null)
+                //        ss = hh.RequestType;
+                //}
+
+                if (ss == "Update")
+                {
+                    fileName = ConversiontoNewNexegeNew(RateSheet);
+                    NameValueCollection nvc1 = new NameValueCollection();
+                    nvc1.Add("bpCode", ServerRatesheetName);
+                    nvc1.Add("bpName", ServerRatesheetName);
+                    nvc1.Add("loggedInUser", User);
+                    nvc1.Add("bpStatus", "true");
+                    nvc1.Add("useForTr", "false");
+                    nvc1.Add("enableProfitRouting", "false");
+                    nvc1.Add("externalGatewayCLI", "false");
+                    nvc1.Add("decimalDigits", "6");
+                    nvc1.Add("bpSeqNo", "-1");
+                    nvc1.Add("owner", User);
+                    nvc1.Add("currencyType", "USD");
+                    nvc1.Add("calendarType", "day");
+                    nvc1.Add("calendarValue", "1-7");
+                    nvc1.Add("descriptionVar", ServerRatesheetName);
+                    nvc1.Add("profitChecking1", "false");
+                    nvc1.Add("retainOtherOldDestinations1", "true");
+                    nvc1.Add("prefix1", "NULL");
+                    // nvc1.Add("pulserule", "1");
+                    string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan", fileName, "ratesheet1", "application/octet-stream", nvc1, sessionID);
+                }
+                else if (ss == "Replace")
+                {
+                    fileName = ConversiontoNewNexegeNew(RateSheet);
+                    NameValueCollection nvc1 = new NameValueCollection();
+                    nvc1.Add("bpCode", ServerRatesheetName);
+                    nvc1.Add("bpName", ServerRatesheetName);
+                    nvc1.Add("loggedInUser", User);
+                    nvc1.Add("bpStatus", "true");
+                    nvc1.Add("useForTr", "false");
+                    nvc1.Add("enableProfitRouting", "false");
+                    nvc1.Add("externalGatewayCLI", "false");
+                    nvc1.Add("decimalDigits", "6");
+                    nvc1.Add("bpSeqNo", "-1");
+                    nvc1.Add("owner", User);
+                    nvc1.Add("currencyType", "USD");
+                    nvc1.Add("calendarType", "day");
+                    nvc1.Add("calendarValue", "1-7");
+                    nvc1.Add("descriptionVar", ServerRatesheetName);
+                    nvc1.Add("profitChecking1", "false");
+                    nvc1.Add("retainOtherOldDestinations1", "false");
+                    nvc1.Add("prefix1", "NULL");
+                    string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan", fileName, "ratesheet1", "application/octet-stream", nvc1, sessionID);
+
+                }
+
+                else
+                {
+
+                    fileName = ConversiontoNewNexegeNew(RateSheet);
+                    NameValueCollection nvc1 = new NameValueCollection();
+                    nvc1.Add("bpCode", "NULL");
+                    nvc1.Add("bpName", ServerRatesheetName);
+                    nvc1.Add("loggedInUser", User);
+                    nvc1.Add("bpStatus", "true");
+                    nvc1.Add("useForTr", "false");
+                    nvc1.Add("enableProfitRouting", "false");
+                    nvc1.Add("externalGatewayCLI", "false");
+                    nvc1.Add("decimalDigits", "6");
+                    nvc1.Add("bpSeqNo", "-1");
+                    nvc1.Add("owner", User);
+                    nvc1.Add("currencyType", "USD");
+                    nvc1.Add("calendarType", "day");
+                    nvc1.Add("calendarValue", "1-7");
+                    nvc1.Add("descriptionVar", ServerRatesheetName);
+                    nvc1.Add("profitChecking1", "false");
+                    nvc1.Add("retainOtherOldDestinations1", "false");
+                    nvc1.Add("prefix1", "NULL");
+                    string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan", fileName, "ratesheet1", "application/octet-stream", nvc1, sessionID);
+
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.status = "failure";
+                result.Message = ex.Message;
+                return result;
+            }
+            //-----------------------------------------old----------------------
+            //string[] ipadd = ip.Split(':');
+            //Response result = new Response();
+            //string[] Pulses = Pulse.Split('/');
+            //string fileName = ConversiontoNewNexege(RateSheet);
+            //try
+            //{
+
+            //    NameValueCollection nvc = new NameValueCollection();
+            //    nvc.Add("actionId", "upload");
+            //    nvc.Add("fileName", fileName);
+
+            //    string[] Response = resolvehtml(HttpUploadFileAdvanced("http://" + ip + "/admin/billingadmin/UploadAdvancedAddressFile.jsp?actionId=upload&fileName=" + fileName, fileName, "ratesheet", "text/csv", nvc, sessionID));
+
+            //    if (Response[0].ToLower() == "success")
+            //    {
+            //        string CreateAdvancedPlanUurl = String.Format(ConfigurationManager.AppSettings["CreateAdvancedPlan"].ToString(), ip, ServerRatesheetName, User, usefortrm, "true", "USD");
+            //        string CrstResult = CreateAdvancedPlanRate(CreateAdvancedPlanUurl, sessionID);
+            //        dynamic returnRes = JsonConvert.DeserializeObject(CrstResult);
+            //    }
+
+            //    return result;
+
+
+            //}
+            //catch (Exception ex)
+            //{
+            //    result.status = "failure";
+            //    result.Message = ex.Message;
+            //    return result;
+            //}
+        }
+
+
+        //pasupathi Delete in Update Function
+        public static Response UploadRatesheetNowAdvancedDelete(List<ngt_rateslist1> RateSheet, string Description, bool usefortrm, string Pulse, int? GracePeriod, string User, string ServerRatesheetName, string ServerRatesheetID, string ip, string sessionID)
+        {
+            string[] ipadd = ip.Split(':');
+            Response result = new Response();
+            string[] Pulses = Pulse.Split('/');
+            string fileName = "";// ConversiontoNewNexege(RateSheet);
+            try
+            {
+                string ss = string.Empty;
+                using (rmsEntities rms = new rmsEntities())
+                {
+                    jobqueue hh = rms.jobqueues.Where(d => d.JobStatus.Equals("Progress")).FirstOrDefault();
+                    if (hh != null)
+                        ss = hh.RequestType;
+                }
+
+                if (ss == "Update")
+                {
+                    fileName = ConversiontoNewNexegeNew(RateSheet);
+                    NameValueCollection nvc1 = new NameValueCollection();
+                    nvc1.Add("bpCode", ServerRatesheetName);
+                    nvc1.Add("bpName", ServerRatesheetName);
+                    nvc1.Add("loggedInUser", User);
+                    nvc1.Add("bpStatus", "true");
+                    nvc1.Add("useForTr", "false");
+                    nvc1.Add("enableProfitRouting", "false");
+                    nvc1.Add("externalGatewayCLI", "false");
+                    nvc1.Add("decimalDigits", "6");
+                    nvc1.Add("bpSeqNo", "-1");
+                    nvc1.Add("owner", User);
+                    nvc1.Add("currencyType", "USD");
+                    nvc1.Add("calendarType", "day");
+                    nvc1.Add("calendarValue", "1-7");
+                    nvc1.Add("descriptionVar", ServerRatesheetName);
+                    nvc1.Add("profitChecking1", "false");
+                    nvc1.Add("retainOtherOldDestinations1", "true");
+                    nvc1.Add("prefix1", "NULL");
+                    // string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan", fileName, "ratesheet1", "application/octet-stream", nvc1, sessionID);
+                    string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=deleteAddressRule&addressRuleId=313&code=919561", fileName, "ratesheet1", "application/octet-stream", nvc1, sessionID);
+                }
+                else if (ss == "Replace")
+                {
+                    fileName = ConversiontoNewNexegeNew(RateSheet);
+                    NameValueCollection nvc1 = new NameValueCollection();
+                    nvc1.Add("bpCode", ServerRatesheetName);
+                    nvc1.Add("bpName", ServerRatesheetName);
+                    nvc1.Add("loggedInUser", User);
+                    nvc1.Add("bpStatus", "true");
+                    nvc1.Add("useForTr", "false");
+                    nvc1.Add("enableProfitRouting", "false");
+                    nvc1.Add("externalGatewayCLI", "false");
+                    nvc1.Add("decimalDigits", "6");
+                    nvc1.Add("bpSeqNo", "-1");
+                    nvc1.Add("owner", User);
+                    nvc1.Add("currencyType", "USD");
+                    nvc1.Add("calendarType", "day");
+                    nvc1.Add("calendarValue", "1-7");
+                    nvc1.Add("descriptionVar", ServerRatesheetName);
+                    nvc1.Add("profitChecking1", "false");
+                    nvc1.Add("retainOtherOldDestinations1", "false");
+                    nvc1.Add("prefix1", "NULL");
+                    string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan", fileName, "ratesheet1", "application/octet-stream", nvc1, sessionID);
+
+                }
+
+                else
+                {
+
+                    fileName = ConversiontoNewNexegeNew(RateSheet);
+                    NameValueCollection nvc1 = new NameValueCollection();
+                    nvc1.Add("bpCode", "NULL");
+                    nvc1.Add("bpName", ServerRatesheetName);
+                    nvc1.Add("loggedInUser", User);
+                    nvc1.Add("bpStatus", "true");
+                    nvc1.Add("useForTr", "false");
+                    nvc1.Add("enableProfitRouting", "false");
+                    nvc1.Add("externalGatewayCLI", "false");
+                    nvc1.Add("decimalDigits", "6");
+                    nvc1.Add("bpSeqNo", "-1");
+                    nvc1.Add("owner", User);
+                    nvc1.Add("currencyType", "USD");
+                    nvc1.Add("calendarType", "day");
+                    nvc1.Add("calendarValue", "1-7");
+                    nvc1.Add("descriptionVar", ServerRatesheetName);
+                    nvc1.Add("profitChecking1", "false");
+                    nvc1.Add("retainOtherOldDestinations1", "false");
+                    nvc1.Add("prefix1", "NULL");
+                    string Response = HttpUploadFile("http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan", fileName, "ratesheet1", "application/octet-stream", nvc1, sessionID);
+
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.status = "failure";
+                result.Message = ex.Message;
+                return result;
+            }
+            //-----------------------------------------old----------------------
+            //string[] ipadd = ip.Split(':');
+            //Response result = new Response();
+            //string[] Pulses = Pulse.Split('/');
+            //string fileName = ConversiontoNewNexege(RateSheet);
+            //try
+            //{
+
+            //    NameValueCollection nvc = new NameValueCollection();
+            //    nvc.Add("actionId", "upload");
+            //    nvc.Add("fileName", fileName);
+
+            //    string[] Response = resolvehtml(HttpUploadFileAdvanced("http://" + ip + "/admin/billingadmin/UploadAdvancedAddressFile.jsp?actionId=upload&fileName=" + fileName, fileName, "ratesheet", "text/csv", nvc, sessionID));
+
+            //    if (Response[0].ToLower() == "success")
+            //    {
+            //        string CreateAdvancedPlanUurl = String.Format(ConfigurationManager.AppSettings["CreateAdvancedPlan"].ToString(), ip, ServerRatesheetName, User, usefortrm, "true", "USD");
+            //        string CrstResult = CreateAdvancedPlanRate(CreateAdvancedPlanUurl, sessionID);
+            //        dynamic returnRes = JsonConvert.DeserializeObject(CrstResult);
+            //    }
+
+            //    return result;
+
+
+            //}
+            //catch (Exception ex)
+            //{
+            //    result.status = "failure";
+            //    result.Message = ex.Message;
+            //    return result;
+            //}
+        }
+
+
+        //shripal
+        public static Response UploadRatesheetNowAdvancedNew(List<ngt_rateslist1> RateSheet, string Description, bool usefortrm, string Pulse, int? GracePeriod, string User, string ServerRatesheetName, string ServerRatesheetID, string ip, string sessionID)
+        {
+
+            Response result = new Response();
+            RestClient restClient1 = new RestClient();
+            try
+            {
+                string fileName = ConversiontoNewNexegeNew(RateSheet);
+
+
+                string URI1 = "http://" + ip + "/admin/billingadmin/ratePlansAdmin.jsp?actionId=saveBillingPlan";
+                RestRequest wc = new RestRequest(URI1, Method.POST);
+
+                wc.AddHeader("Content-Type", "multipart/form-data");
+                wc.AddHeader("Host", ip);// wc.AddHeader("Host", "37.220.110.219:8082");
+                wc.AddCookie("JSESSIONID", sessionID);//"9BD2C69D000E82D2AFDEA0155D4273FC");
+
+                wc.AddParameter("bpCode", "NULL");
+                wc.AddParameter("bpName", ServerRatesheetName);//AirtelIncoming);
+                wc.AddParameter("loggedInUser", User); //admin);
+                wc.AddParameter("bpStatus", "true");
+                wc.AddParameter("useForTr", "false");//true/false);
+                wc.AddParameter("enableProfitRouting", "true");
+                wc.AddParameter("externalGatewayCLI", "false");
+                wc.AddParameter("decimalDigits", "6");
+                wc.AddParameter("bpSeqNo", "-1");
+                wc.AddParameter("owner", User);//admin);
+                wc.AddParameter("currencyType", "USD");
+                wc.AddParameter("calendarType", "day");
+                wc.AddParameter("calendarValue", "1-7");
+                wc.AddParameter("descriptionVar", ServerRatesheetName);//airtelalldayplan);
+                wc.AddParameter("profitChecking1", "true");
+                wc.AddParameter("retainOtherOldDestinations1", "true");
+                wc.AddParameter("prefix1", "NULL");
+                // FileStream fs = new FileStream("D:/Projects/Code/Code/Development/RmsServices/RMSServices/ratesheetFiles/ratesheett2.csv", FileMode.Open, FileAccess.Read);
+                FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+                byte[] data = new byte[fs.Length];
+                fs.Read(data, 0, data.Length);
+                fs.Close();
+                wc.AddFile("ratesheet1", data, "ratesheet1");
+                IRestResponse response = restClient1.Execute(wc);
+                response.Content.ToString();
+
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    if (response.Content != "")
+                    {
+                        DataContractJsonSerializer obj = new DataContractJsonSerializer(typeof(RootObjectnexge));
+                        using (var stream = new MemoryStream(Encoding.Unicode.GetBytes(response.Content)))
+                        {
+                            var ContactResponse = (RootObjectnexge)obj.ReadObject(stream);
+                            if (ContactResponse.status == "success")
+                            {
+                                result.status = "success";
+                                result.Message = "Ratesheet added successfully.";
+                            }
+                        }
+                    }
+                }
+                //dynamic returnRes = JsonConvert.DeserializeObject(response);
+                // result.status=response.Content[0].
+
+
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                result.status = "failure";
+                result.Message = ex.Message;
+                return result;
+            }
+
+        }
+
+        public class RootObjectnexge
+        {
+            public string status { get; set; }
+            public int statusCode { get; set; }
+            public string bpCode { get; set; }
+            public string bpName { get; set; }
+            public string description { get; set; }
+            public string owner { get; set; }
+            public string Status { get; set; }
+            public string currencyType { get; set; }
+            public string planUsage { get; set; }
+            public string creationDate { get; set; }
+            public string createdBy { get; set; }
+            public string modifiedDate { get; set; }
+            public string modifiedBy { get; set; }
+            public bool editMode { get; set; }
+            public bool isSaved { get; set; }
+            public string DuplicateRateSheetDetails { get; set; }
+            //  public List<BillingPlanDetail> BillingPlanDetails { get; set; }
+        }
+
+        public static string[] resolvehtml(string str)
+        {
+            string[] rA = new string[2];
+            try
+            {
+                if (str.Contains("success"))
+                {
+                    rA[0] = "success";
+                    rA[1] = "CSV Uploaded SuccessFully";
+                }
+                else
+                {
+                    rA[0] = "failure";
+                    rA[1] = "CSV not Uploaded.";
+                }
+            }
+            catch (Exception ex)
+            {
+                rA[0] = "failure";
+                rA[1] = ex.Message;
+            }
+            return rA;
+        }
+
+        public static string CreateAdvancedPlanRate(string Url, string sessionId)
+        {
+            Response res = new Response();
+            wr = (HttpWebRequest)WebRequest.Create(Url);
+
+            cookies.Add(new Cookie() { Name = "JSESSIONID", Value = sessionId, Domain = "37.220.110.219" });
+            wr.CookieContainer = cookies;
+
+            //wr.CookieContainer = cookies;
+            wr.KeepAlive = true;
+            WebResponse response = wr.GetResponse();
+            Stream stream2 = response.GetResponseStream();
+            StreamReader reader2 = new StreamReader(stream2);
+            string output = reader2.ReadToEnd();
+
+            return output;
+        }
+
+
+        /*=============================================NexgeRatePushByPulseRule End==============================================================*/
+
+
+
+
+        /*=============================================NexgeRatePushByPulseRule Start==============================================================*/
+        public static string HttpUploadFileAdvanced(string url, string file, string paramName, string contentType, NameValueCollection nvc, string sessionID)
+        {
+            string output = "";
+            //log.Debug(string.Format("Uploading {0} to {1}", file, url));
+            string boundary = "---------------------------" + DateTime.Now.Ticks.ToString("x");
+            byte[] boundarybytes = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "\r\n");
+            wr = (HttpWebRequest)WebRequest.Create(url);
+            wr.ContentType = "multipart/form-data; boundary=" + boundary;
+            wr.Method = "POST";
+            wr.KeepAlive = true;
+            wr.Credentials = System.Net.CredentialCache.DefaultCredentials;
+            cookies.Add(new Cookie() { Name = "JSESSIONID", Value = sessionID, Domain = "37.220.110.62" });
+            //ConfigurationManager.AppSettings["sipDomain"].ToString()
+            wr.CookieContainer = cookies;
+
+            Stream rs = wr.GetRequestStream();
+            string formdataTemplate = "Content-Disposition: form-data; name=\"{0}\"\r\n\r\n{1}";
+            foreach (string key in nvc.Keys)
+            {
+                rs.Write(boundarybytes, 0, boundarybytes.Length);
+                string formitem = string.Format(formdataTemplate, key, nvc[key]);
+                byte[] formitembytes = System.Text.Encoding.UTF8.GetBytes(formitem);
+                rs.Write(formitembytes, 0, formitembytes.Length);
+            }
+            rs.Write(boundarybytes, 0, boundarybytes.Length);
+            string headerTemplate = "Content-Disposition: form-data; name=\"{0}\"; filename=\"{1}\"\r\nContent-Type: {2}\r\n\r\n";
+            string header = string.Format(headerTemplate, paramName, file, contentType);
+            byte[] headerbytes = System.Text.Encoding.UTF8.GetBytes(header);
+            rs.Write(headerbytes, 0, headerbytes.Length);
+
+            FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            byte[] buffer = new byte[4096];
+            int bytesRead = 0;
+            while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) != 0)
+            {
+                rs.Write(buffer, 0, bytesRead);
+            }
+            fileStream.Close();
+            byte[] trailer = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "--\r\n");
+            rs.Write(trailer, 0, trailer.Length);
+            rs.Close();
+            WebResponse wresp = null;
+            try
+            {
+                wresp = wr.GetResponse();
+                HttpWebResponse response = (HttpWebResponse)wr.GetResponse();
+                foreach (Cookie Value in response.Cookies)
+                {
+                    NexgesessionId = Value.Name + "=" + Value.Value;
+                    break;
+                }
+                Stream stream2 = wresp.GetResponseStream();
+                StreamReader reader2 = new StreamReader(stream2);
+                output = reader2.ReadToEnd();
+
+            }
+            catch (Exception ex)
+            {
+                //log.Error("Error uploading file", ex);
+                output = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response-data><actionid>uploadRateSheetCSVFile</actionid><service-provider>AS</service-provider><status>false</status><cs-data>Error uploading file : " + ex.Message + "</cs-data></response-data>";
+                if (wresp != null)
+                {
+                    wresp.Close();
+                    wresp = null;
+                }
+            }
+            finally
+            {
+                wr = null;
+            }
+            return output;
+        }
+
+
+
+        /*=============================================NexgeRatePushByPulseRule Start==============================================================*/
+
+
+
+        //shripal
+        /*=============================================NexgeRatesheet Start==============================================================*/
+        public static string HttpUploadFileAdvancedNew(string url, string file, string paramName, string contentType, NameValueCollection nvc, string sessionID)
+        {
+            string output = "";
+            //log.Debug(string.Format("Uploading {0} to {1}", file, url));
+            string boundary = "---------------------------" + DateTime.Now.Ticks.ToString("x");
+            byte[] boundarybytes = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "\r\n");
+            wr = (HttpWebRequest)WebRequest.Create(url);
+            wr.ContentType = "multipart/form-data; boundary=" + boundary;
+            wr.Method = "POST";
+            wr.KeepAlive = true;
+            wr.Credentials = System.Net.CredentialCache.DefaultCredentials;
+            //shripal cookies.Add(new Cookie() { Name = "JSESSIONID", Value = sessionID, Domain = "37.220.110.62" });
+            cookies.Add(new Cookie() { Name = "JSESSIONID", Value = sessionID, Domain = "37.220.110.219" });
+            //ConfigurationManager.AppSettings["sipDomain"].ToString()
+            wr.CookieContainer = cookies;
+
+            Stream rs = wr.GetRequestStream();
+            string formdataTemplate = "Content-Disposition: form-data; name=\"{0}\"\r\n\r\n{1}";
+
+            FileStream fs = new FileStream("D:/Projects/Code/Code/Development/RmsServices/RMSServices/ratesheetFiles/ratesheett2.csv", FileMode.Open, FileAccess.Read);
+            byte[] data = new byte[fs.Length];
+            fs.Read(data, 0, data.Length);
+            fs.Close();
+
+            foreach (string key in nvc.Keys)
+            {
+
+                if (key == "ratesheet1")
+                {
+                    rs.Write(boundarybytes, 0, boundarybytes.Length);
+                    string formitem1 = string.Format(formdataTemplate, key, data);
+                    byte[] formitembytes1 = System.Text.Encoding.UTF8.GetBytes(formitem1);
+                    rs.Write(formitembytes1, 0, formitembytes1.Length);
+                }
+                else
+                {
+                    rs.Write(boundarybytes, 0, boundarybytes.Length);
+                    string formitem = string.Format(formdataTemplate, key, nvc[key]);
+                    byte[] formitembytes = System.Text.Encoding.UTF8.GetBytes(formitem);
+                    rs.Write(formitembytes, 0, formitembytes.Length);
+                }
+            }
+            rs.Write(boundarybytes, 0, boundarybytes.Length);
+            string headerTemplate = "Content-Disposition: form-data; name=\"{0}\"; filename=\"{1}\"\r\nContent-Type: {2}\r\n\r\n";
+            string header = string.Format(headerTemplate, paramName, file, contentType);
+            byte[] headerbytes = System.Text.Encoding.UTF8.GetBytes(header);
+            rs.Write(headerbytes, 0, headerbytes.Length);
+
+            ////FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            ////byte[] buffer = new byte[4096];
+            ////int bytesRead = 0;
+            ////while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) != 0)
+            ////{
+            ////    rs.Write(buffer, 0, bytesRead);
+            ////}
+            ////fileStream.Close();
+            byte[] trailer = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "--\r\n");
+            rs.Write(trailer, 0, trailer.Length);
+            rs.Close();
+            WebResponse wresp = null;
+            try
+            {
+
+                wresp = wr.GetResponse();
+                HttpWebResponse response = (HttpWebResponse)wr.GetResponse();
+                foreach (Cookie Value in response.Cookies)
+                {
+                    NexgesessionId = Value.Name + "=" + Value.Value;
+                    break;
+                }
+                Stream stream2 = wresp.GetResponseStream();
+                StreamReader reader2 = new StreamReader(stream2);
+                output = reader2.ReadToEnd();
+
+            }
+            catch (Exception ex)
+            {
+                //log.Error("Error uploading file", ex);
+                output = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response-data><actionid>uploadRateSheetCSVFile</actionid><service-provider>AS</service-provider><status>false</status><cs-data>Error uploading file : " + ex.Message + "</cs-data></response-data>";
+                if (wresp != null)
+                {
+                    wresp.Close();
+                    wresp = null;
+                }
+            }
+            finally
+            {
+                wr = null;
+            }
+            return output;
+        }
+
+        // Pasupathi Created for Errorstatus
+        public static void UpdateError(string ErrorMessage, string ErrorDescription, string FileName, string Parametersdata, bool Savetodb)
+        {
+            try
+            {
+                string FilePath = System.Web.Hosting.HostingEnvironment.MapPath("~/logs/" + FileName);
+                System.IO.StreamWriter file1 = File.AppendText(FilePath);
+                file1.WriteLine("\r\n" + DateTime.Now.ToString() + " ");
+                file1.WriteLine(ErrorMessage + " ");
+                file1.WriteLine(ErrorDescription + " ");
+                file1.WriteLine(Parametersdata + " ");
+                file1.Close();
+                if (Savetodb)
+                {
+                    //saving the same parameters also to db.
+
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
+
+    }
+}
