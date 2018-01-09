@@ -15,6 +15,7 @@ using System.Text;
 using System.Web;
 using System.Web.Hosting;
 
+
 namespace RMSServices
 {
 
@@ -36,14 +37,13 @@ namespace RMSServices
             fsnewnexge.Read(DatanewNexge, 0, DatanewNexge.Length);
             fsnewnexge.Close();
 
-            UpdateError("NewNexge Ratesheet UploadRatesheetEffectiveOn Ratesheet CSV", rateEffectiveOn, "RatesheetLogs.txt", " File Name:- " + fileName + ", Company Type:-" + CompanyType, false);
+            UpdateError("NewNexge Ratesheet UploadRatesheetEffectiveOn Ratesheet CSV", rateEffectiveOn, "RatesheetLogs.txt", ", Company Type:-" + CompanyType, false);
 
             try
             {
                 if (CompanyType == false)
                 {
                     string SessionId = AuthicateoldLogin(ip, User, password);
-
 
                     RestClient restClient1 = new RestClient();
                     restClient1.CookieContainer = new CookieContainer();
@@ -67,7 +67,7 @@ namespace RMSServices
                     wc.AddParameter("calendarValue", "1-7");
                     wc.AddParameter("isRateSheetAvail", "true");
 
-                    if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetcallcenterupdatetermination"].ToString())
+                    if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetcallcenterupdatetermination"].ToString() || ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetNimbuzz"].ToString())
                     {
 
                         //  string newNexgeSampleFilePathItel = ConversiontoDummyNewNexegeitelUpdate(RateSheet);
@@ -77,6 +77,7 @@ namespace RMSServices
                         byte[] DatanewNexgecallcenter = new byte[fsnewnexgecallcentre.Length];
                         fsnewnexgecallcentre.Read(DatanewNexgecallcenter, 0, DatanewNexgecallcenter.Length);
                         fsnewnexgecallcentre.Close();
+                        UpdateError("NewNexge Ratesheet Update callcentre & Nimbuzz updateorigination", "Ip Addess:" + ip, "RatesheetLogs.txt", newNexgeSampleFilePathcallcentre, false);
 
                         wc.AddFile("fileName", DatanewNexgecallcenter, ServerRatesheetName);
                     }
@@ -89,13 +90,34 @@ namespace RMSServices
                         fsnewnexgeItel.Read(DatanewNexgeItel, 0, DatanewNexgeItel.Length);
                         fsnewnexgeItel.Close();
 
+                        UpdateError("NewNexge Ratesheet Update Itel & Telservnet2 updateorigination", "Ip Addess:" + ip, "RatesheetLogs.txt", newNexgeSampleFilePathItel, false);
+
                         wc.AddFile("fileName", DatanewNexgeItel, ServerRatesheetName);
                     }
+                    else if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetcallblue"].ToString())
+                    {
+                        string newNexgeSampleFilePathcallblue = ConversiontoDummyNewNexegecallblueupdate(RateSheet);
+
+                        FileStream fsnewnexgecallblue = new FileStream(newNexgeSampleFilePathcallblue, FileMode.Open, FileAccess.Read);
+                        byte[] DatanewNexgecallblue = new byte[fsnewnexgecallblue.Length];
+                        fsnewnexgecallblue.Read(DatanewNexgecallblue, 0, DatanewNexgecallblue.Length);
+                        fsnewnexgecallblue.Close();
+
+                        UpdateError("NewNexge Ratesheet Update callblue  updateorigination", "Ip Addess:" + ip, "RatesheetLogs.txt", newNexgeSampleFilePathcallblue, false);
+
+                        wc.AddFile("fileName", DatanewNexgecallblue, ServerRatesheetName);
+                    }
                     else
+                    {
+                        UpdateError("NewNexge Ratesheet Update Others (mongoripe,callblue,amigo)  updateorigination", "Ip Addess:" + ip, "RatesheetLogs.txt", fileName, false);
+
                         wc.AddFile("fileName", DatanewNexge, ServerRatesheetName);
+                    }
 
                     wc.AddParameter("updateType", "append");
                     wc.AddParameter("sheetWith", "None");
+                    //  wc.AddParameter("action_uri", "ratePlanManagement");
+                    // wc.AddParameter("rowNumber", "0");
                     wc.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["WcTimeout"]);
                     restClient1.Timeout = Convert.ToInt32(ConfigurationManager.AppSettings["RcTimeout"]);
 
@@ -104,7 +126,7 @@ namespace RMSServices
                     { return true; };
 
                     IRestResponse response1 = restClient1.Execute(wc);
-                    UpdateError("NewNexge Ratesheet Update Response", " Response:- " + response1.Content, "RatesheetLogs.txt", fileName, false);
+                    UpdateError("NewNexge Ratesheet Update Response", " Response:- " + response1.Content, "RatesheetLogs.txt", ",ServerRatesheetName: " + ServerRatesheetName + " & IP=" + ip, false);
                     if (response1.Content.Contains("Rate Effective Billing Plan Added Successfully"))
                     {
                         result.status = "success";
@@ -113,6 +135,11 @@ namespace RMSServices
                     }
                     else
                     {
+                        if(ip == ConfigurationManager.AppSettings["Amigo"].ToString() && response1.Content.Trim()=="")
+                        {
+                            result.status = "success";
+                            result.Message = response1.Content;
+                        }
                         result.status = "failure";
                         result.Message = response1.Content;
                     }
@@ -151,7 +178,7 @@ namespace RMSServices
                     wc.AddParameter("calendarValue", "1-7");
                     wc.AddParameter("isRateSheetAvail", "true");
 
-                    if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetcallcenterupdatetermination"].ToString() || ip == ConfigurationManager.AppSettings["Telservnet2"].ToString())
+                    if (ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetcallcenterupdatetermination"].ToString() || ip == ConfigurationManager.AppSettings["Telservnet2"].ToString() || ip == ConfigurationManager.AppSettings["NewNexgeIpRatesheetNimbuzz"].ToString())
                     {
 
                         string newNexgeSampleFilePathcallcentre = ConversiontoNewNexegecallcentreNewTerminationUpdate(RateSheet);
@@ -161,7 +188,7 @@ namespace RMSServices
                         fsnewnexgecallcentre.Read(DatanewNexgecallcenter, 0, DatanewNexgecallcenter.Length);
                         fsnewnexgecallcentre.Close();
 
-                        UpdateError("NewNexge Ratesheet Update Telservnet2 & NewNexgeIpRatesheetcallcenterupdatetermination", " ", "RatesheetLogs.txt", newNexgeSampleFilePathcallcentre, false);
+                        UpdateError("NewNexge Ratesheet Telservnet2 & callcenter & Nimbuzz & Telservnet2  updatetermination", "Ip Addess:" + ip, "RatesheetLogs.txt", newNexgeSampleFilePathcallcentre, false);
 
                         wc.AddFile("fileName", DatanewNexgecallcenter, ServerRatesheetName);
                     }
@@ -175,13 +202,18 @@ namespace RMSServices
                         byte[] DatanewNexgeItel = new byte[fsnewnexgeItel.Length];
                         fsnewnexgeItel.Read(DatanewNexgeItel, 0, DatanewNexgeItel.Length);
                         fsnewnexgeItel.Close();
-                        UpdateError("NewNexge Ratesheet Update NewNexgeIpRatesheetItel", " ", "RatesheetLogs.txt", newNexgeSampleFilePathItel, false);
+                        UpdateError("NewNexge Ratesheet Itel updatetermination", "Ip Addess:" + ip, "RatesheetLogs.txt", newNexgeSampleFilePathItel, false);
 
                         wc.AddFile("fileName", DatanewNexgeItel, ServerRatesheetName);
 
                     }
+
                     else
+                    {
+                        UpdateError("NewNexge Ratesheet  Remaining Servers (Amigo,callblue, mongoripe,telservnet2) updatetermination", "Ip Addess:" + ip, "RatesheetLogs.txt", fileNameterm, false);
+
                         wc.AddFile("fileName", DatanewNexgeterm, ServerRatesheetName);
+                    }
 
 
                     wc.AddParameter("updateType", "append");
@@ -194,7 +226,7 @@ namespace RMSServices
                     { return true; };
 
                     IRestResponse response1 = restClient1.Execute(wc);
-                    UpdateError("NewNexge Ratesheet Update Response", " Response:- " + response1.Content, "RatesheetLogs.txt", fileName, false);
+                    UpdateError("NewNexge Ratesheet Update Response", " Response:- " + response1.Content, "RatesheetLogs.txt",",ServerRatesheetName: " + ServerRatesheetName + " & IP=" + ip, false);
                     if (response1.Content.Contains("Rate Effective Billing Plan Added Successfully"))
                     {
                         result.status = "success";
@@ -1589,6 +1621,103 @@ namespace RMSServices
 
         }
 
+        protected static string ConversiontoDummyNewNexegecallblue(List<RMSServices.RatesheetV2.ngt_rateslist> RateSheet)
+        {
+            List<NewNexegeRatesheetNewMappcallblue> rateList = new List<NewNexegeRatesheetNewMappcallblue>();
+            try
+            {
+                string OriginalName = DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                CsvFileName = OriginalName;
+                string files = "~/ratesheetFiles/" + OriginalName;
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        //foreach (var k in rmsContxt.specialcharconfigs.ToList())
+                        //{
+                        rateList.Add(new NewNexegeRatesheetNewMappcallblue()
+                        {
+
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description,
+                            Rate = rate.Call_rate
+                            //  ,
+                            //  Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED"
+
+                            ,
+                            hangupduration = "5"
+                        });
+                        // }
+                    }
+                }
+
+
+                RMSDTR.CreateCSVFromGenericList(rateList, filename);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+        protected static string ConversiontoDummyNewNexegecallblueupdate(List<ngt_rateslist1> RateSheet)
+        {
+            List<NewNexegeRatesheetNewMappcallblueupdate> rateList = new List<NewNexegeRatesheetNewMappcallblueupdate>();
+            try
+            {
+                // "CostSheetPrefixWithHangupDuration.csv"
+
+                string file = HostingEnvironment.MapPath("~/ratesheetFiles/CostSheetPrefixWithHangupDuration.csv");
+
+                using (var sw = new StreamWriter(file))
+                {
+                    sw.Write("");
+                }
+
+                string OriginalName = DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".csv";
+                CsvFileName = OriginalName;
+                string files = "~/ratesheetFiles/" + CsvFileName;
+                string filename = HostingEnvironment.MapPath(files);
+                foreach (var rate in RateSheet)
+                {
+                    if (rate.Active != "D")
+                    {
+                        //foreach (var k in rmsContxt.specialcharconfigs.ToList())
+                        //{
+                        rateList.Add(new NewNexegeRatesheetNewMappcallblueupdate()
+                        {
+
+                            Country_Prefix = rate.ngt_regionName,
+                            Country_Name = rate.Description,
+                            Rate = rate.Call_rate
+                              ,
+                            Blocked = rate.Active == "A" ? "ALLOWED" : "BLOCKED"
+
+                            ,
+                            //pulseId=30
+                            //,
+                            hangupduration = -1
+                        });
+                        // }
+                    }
+                }
+
+                RMSDTR.CreateCSVFromGenericListcallblue(rateList, file);
+
+                RMSDTR.CreateCSVFromGenericListcallblue(rateList, filename);
+
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                return "Exception " + ex.Message;
+            }
+
+        }
+
+
         protected static string ConversiontoDummyNewNexegeitelTermination(List<ngt_rateslist1> RateSheet)
         {
             List<NewNexegeRatesheetNewMappItelTerm> rateList = new List<NewNexegeRatesheetNewMappItelTerm>();
@@ -2016,7 +2145,7 @@ namespace RMSServices
             string SessionId = AuthicateoldLogin(Ipaddress, UserName, Password);
             if (SessionId != "")
             {
-               
+
 
                 Res = NewReplaceRates(RatesheetData, Description, useFortrm, pulse, gracePeriod, UserName, ServerRatesheetName, ServerRatesheetID, Ipaddress, SessionId, actiontype, Password);
                 int count = 0;
@@ -2193,7 +2322,7 @@ namespace RMSServices
                     wc.AddParameter("bpName", ServerRatesheetName);//AirtelIncoming);  
                     wc.AddParameter("owner", "admin");//admin);                      
                     wc.AddParameter("pulse", "1/1");
-                    wc.AddParameter("gracePeriod1", "6");
+                    wc.AddParameter("gracePeriod1", "0");
                     wc.AddParameter("tempplanTypeCode_1", "1");
                     //  wc.AddFile("ratesheet1", DatanewNexgeTerm, ServerRatesheetName);
                     if (Ipaddress == ConfigurationManager.AppSettings["NewNexgeIpRatesheetItel"].ToString())
@@ -2254,6 +2383,17 @@ namespace RMSServices
                     //else
                     if (Ipaddress == ConfigurationManager.AppSettings["NewNexgeIpRatesheetItel"].ToString())
                         wc.AddFile("ratesheet1", DatanewNexgeItel, ServerRatesheetName);
+                    else if (Ipaddress == ConfigurationManager.AppSettings["NewNexgeIpRatesheetcallblue"].ToString())
+                    {
+                        string newNexgeSampleFilePathcallblue = ConversiontoDummyNewNexegecallblue(RatesheetData);
+
+                        FileStream fsnewnexgecallblue = new FileStream(newNexgeSampleFilePathcallblue, FileMode.Open, FileAccess.Read);
+                        byte[] DatanewNexgecallblue = new byte[fsnewnexgecallblue.Length];
+                        fsnewnexgecallblue.Read(DatanewNexgecallblue, 0, DatanewNexgecallblue.Length);
+                        fsnewnexgecallblue.Close();
+
+                        wc.AddFile("ratesheet1", DatanewNexgecallblue, ServerRatesheetName);
+                    }
                     else
                         wc.AddFile("ratesheet1", DatanewNexge, ServerRatesheetName);
                 }
@@ -2493,6 +2633,31 @@ namespace RMSServices
             //   public int startpulse { get; set; }
             // public int nextpulse { get; set; }
             public string EffectiveDate { get; set; }
+
+        }
+        private class NewNexegeRatesheetNewMappcallblue
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+
+            // public string Blocked { get; set; }
+
+            //   public int startpulse { get; set; }
+            // public int nextpulse { get; set; }
+            public string hangupduration { get; set; }
+
+        }
+        private class NewNexegeRatesheetNewMappcallblueupdate
+        {
+            public string Country_Prefix { get; set; }
+            public string Country_Name { get; set; }
+            public decimal Rate { get; set; }
+            public string Blocked { get; set; }
+            // public int pulseId { get; set; }
+            //   public int startpulse { get; set; }
+            // public int nextpulse { get; set; }
+            public int hangupduration { get; set; }
 
         }
         private class NewNexegeRatesheetNewMappItelTerm
